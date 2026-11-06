@@ -54,6 +54,15 @@ describe('readInputs', () => {
     expect(inputs.outputPath).toBeUndefined();
   });
 
+  it.each(['GAS_SCRIPT_ID', 'GAS_DEPLOYMENT_ID'])(
+    'rejects a %s with invalid characters without echoing it',
+    (name) => {
+      const message = messageOf({ ...base, [name]: 'abc\nurl=evil' });
+      expect(message).toContain(name);
+      expect(message).not.toContain('evil');
+    },
+  );
+
   it.each([
     ['missing CLASPRC_JSON', { GAS_SCRIPT_ID: 'x' }, 'CLASPRC_JSON'],
     [

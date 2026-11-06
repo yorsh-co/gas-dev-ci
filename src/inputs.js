@@ -20,6 +20,19 @@ function nonEmpty(value) {
   return value === undefined || value === '' ? undefined : value;
 }
 
+const ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+
+/**
+ * @param {string} name
+ * @param {string | undefined} value
+ * @throws {CiError} If the value contains characters outside an Apps Script ID.
+ */
+function assertId(name, value) {
+  if (value !== undefined && !ID_PATTERN.test(value)) {
+    throw new CiError(`${name} contains characters not allowed in an ID.`);
+  }
+}
+
 /**
  * Reads and validates the deploy inputs from the environment. Error messages
  * name the variable but never include its value.
@@ -51,10 +64,13 @@ export function readInputs(env) {
       'GAS_SCRIPT_ID is not set. Add it as a variable of the deployment environment.',
     );
   }
+  const deploymentId = nonEmpty(env.GAS_DEPLOYMENT_ID);
+  assertId('GAS_SCRIPT_ID', scriptId);
+  assertId('GAS_DEPLOYMENT_ID', deploymentId);
   return {
     clasprc: /** @type {Record<string, unknown>} */ (parsed),
     scriptId,
-    deploymentId: nonEmpty(env.GAS_DEPLOYMENT_ID),
+    deploymentId,
     sha: nonEmpty(env.GITHUB_SHA),
     githubActions: env.GITHUB_ACTIONS === 'true',
     outputPath: nonEmpty(env.GITHUB_OUTPUT),
