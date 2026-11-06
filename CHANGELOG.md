@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+---
+
+## [0.1.0] - 2026-11-06
+
 ### Added
 
 - `gas-dev-ci deploy` CLI: push via clasp, redeploy of a configured web-app deployment, `url` output and job summary.
