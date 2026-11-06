@@ -108,6 +108,8 @@ If the OAuth scopes in the built `appsscript.json` differ from those of the depl
 2. In the Apps Script editor, go to Deploy > Manage deployments, edit the web app deployment, choose New version and authorize.
 3. Re-run the workflow.
 
+The check compares only the explicit `oauthScopes` in `appsscript.json`. A project that relies on automatic scope detection (no `oauthScopes` key) always passes the check, so web-app projects should declare `oauthScopes` explicitly.
+
 ## CLI reference
 
 ```sh

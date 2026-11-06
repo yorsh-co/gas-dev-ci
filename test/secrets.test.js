@@ -38,6 +38,12 @@ describe('maskCommands', () => {
     ]);
   });
 
+  it('escapes workflow command characters', () => {
+    expect(maskCommands(['abc%0Adefgh'])).toEqual([
+      '::add-mask::abc%250Adefgh',
+    ]);
+  });
+
   it('masks multi-line values line by line and dedupes', () => {
     expect(
       maskCommands([

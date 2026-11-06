@@ -18,7 +18,7 @@ export const fakeClaspBin = SCRIPT;
  * Reads the calls logged by the fake.
  *
  * @param {string} logPath
- * @returns {{ args: string[], cwd: string, projectDir?: string, files: Record<string, string> }[]}
+ * @returns {{ args: string[], cwd: string, projectDir?: string, files: Record<string, string>, claspEnv: Record<string, string | undefined> }[]}
  */
 export function readCalls(logPath) {
   try {
@@ -47,7 +47,16 @@ function main() {
   }
   appendFileSync(
     /** @type {string} */ (env.FAKE_CLASP_LOG),
-    `${JSON.stringify({ args, cwd: process.cwd(), projectDir, files })}\n`,
+    `${JSON.stringify({
+      args,
+      cwd: process.cwd(),
+      projectDir,
+      files,
+      claspEnv: {
+        clasp_config_auth: env.clasp_config_auth,
+        clasp_config_project: env.clasp_config_project,
+      },
+    })}\n`,
   );
   const command =
     args.filter(

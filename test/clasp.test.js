@@ -40,6 +40,13 @@ describe('createClasp', () => {
     expect(call?.cwd).toBe(dir);
   });
 
+  it('does not pass clasp config overrides from the environment', () => {
+    extraEnv.clasp_config_auth = '/elsewhere/auth';
+    extraEnv.clasp_config_project = '/elsewhere/project';
+    make().push();
+    expect(readCalls(logPath)[0]?.claspEnv).toEqual({});
+  });
+
   it('lists deployments', () => {
     extraEnv.FAKE_CLASP_DEPLOYMENTS = JSON.stringify([
       { deploymentId: 'd1', versionNumber: 3 },

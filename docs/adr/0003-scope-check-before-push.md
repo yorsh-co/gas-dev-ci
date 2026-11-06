@@ -13,6 +13,7 @@ When `GAS_DEPLOYMENT_ID` is set, the CLI compares the `oauthScopes` of the built
 
 - The scopes are compared as sorted unique sets; a missing key counts as `[]`.
 - If they differ, the CLI exits 1 before any change, listing the added and removed scopes and pointing to the README section on scope changes.
+- Only the explicit `oauthScopes` are compared: a project relying on automatic scope detection (no `oauthScopes` key) always passes, so web-app projects should declare `oauthScopes` explicitly.
 - The owner then authorizes the scopes manually and re-runs the workflow.
 
 ## Consequences

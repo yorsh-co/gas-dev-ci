@@ -66,6 +66,10 @@ export function resolveClaspBin() {
  */
 export function createClasp({ cwd, env, redact, bin }) {
   const claspBin = bin ?? resolveClaspBin();
+  // clasp reads these from the environment and they could redirect it to other credentials or project.
+  const claspEnv = { ...env };
+  delete claspEnv.clasp_config_auth;
+  delete claspEnv.clasp_config_project;
 
   /**
    * @param {string[]} args
@@ -77,7 +81,7 @@ export function createClasp({ cwd, env, redact, bin }) {
     const name = rest.find((arg) => !arg.startsWith('-')) ?? rest[0];
     const result = spawnSync(process.execPath, [claspBin, ...args], {
       cwd: options.cwd ?? cwd,
-      env,
+      env: claspEnv,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
     });

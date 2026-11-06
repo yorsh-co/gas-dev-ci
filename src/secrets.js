@@ -38,6 +38,19 @@ export function createRedactor(values) {
 }
 
 /**
+ * Escapes a value for a workflow command, so a literal `%0A` is not decoded.
+ *
+ * @param {string} value
+ * @returns {string}
+ */
+function escapeCommand(value) {
+  return value
+    .replaceAll('%', '%25')
+    .replaceAll('\r', '%0D')
+    .replaceAll('\n', '%0A');
+}
+
+/**
  * @param {string[]} values
  * @returns {string[]} Unique GitHub Actions `::add-mask::` lines. Multi-line
  * values are masked line by line, since a command masks a single line only.
@@ -48,5 +61,7 @@ export function maskCommands(values) {
       ? value.split(/\r?\n/).filter((line) => line !== '')
       : [value],
   );
-  return [...new Set(masks)].map((mask) => `::add-mask::${mask}`);
+  return [...new Set(masks)].map(
+    (mask) => `::add-mask::${escapeCommand(mask)}`,
+  );
 }
