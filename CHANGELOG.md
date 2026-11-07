@@ -4,9 +4,19 @@
 
 ## [Unreleased]
 
+### Added
+
+- ADR 0008 security model.
+
+### Changed
+
+- `deploy()` and the CLI `main()` context no longer take `home`.
+
 ### Fixed
 
 - Redeploy uses clasp's canonical `create-deployment` command instead of the `deploy` alias (ADR 0006).
+- clasp's child environment no longer receives `CLASPRC_JSON` or `clasp_config_ignore`.
+- Credentials are written to a private temporary file passed with `-A` and removed after the run (also on failure); `~/.clasprc.json` is no longer written or overwritten.
 
 ---
 
