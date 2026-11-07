@@ -107,7 +107,7 @@ Add the workflow from [Usage](#usage) at `.github/workflows/deploy.yml`.
 
 #### 10. Verify the first run
 
-Push to `develop`. The job summary and the `url` output show the web app URL; a push-only project shows no URL. On a scope-change failure, follow [Scope changes](#scope-changes). On `invalid_grant`, follow [token rotation](#token-expiry-revocation-and-rotation).
+Push to `develop`, then merge to `main` and confirm the `live` run. The job summary and the `url` output show the web app URL; a push-only project shows no URL. On a scope-change failure, follow [Scope changes](#scope-changes). On `invalid_grant`, follow [token rotation](#token-expiry-revocation-and-rotation).
 
 ## Usage
 
