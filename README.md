@@ -36,6 +36,79 @@ npm install -D github:yorsh-co/gas-dev-ci#semver:^0.1.0
 
 The workflow is referenced by the moving minor tag (`@v0.1`), and the CLI by a semver range (`#semver:^0.1.0`). Both resolve to the latest 0.1.x release, but they are fetched separately: the workflow definition by GitHub when the job starts, the CLI by `npm ci` from your lockfile.
 
+## Setup
+
+Steps 1-4 are done once per repository, steps 5-8 once per environment (`dev`, `live`), and steps 9-10 once.
+
+#### 1. Enable the Apps Script API
+
+Enable the [Apps Script API](https://script.google.com/home/usersettings) for the Google account that owns the scripts, ideally a dedicated account.
+
+#### 2. Install the CLI
+
+See [Install](#install).
+
+#### 3. Commit `.clasp.example.json`
+
+Commit `.clasp.example.json` at the project root. It is the base of `.clasp.json`, without `scriptId`. The optional `rootDir` (relative, no `..`) is where the build writes `appsscript.json`:
+
+```json
+{ "rootDir": "dist" }
+```
+
+Add `.clasp.json` to `.gitignore`: the CLI overwrites it from the template plus `GAS_SCRIPT_ID`.
+
+#### 4. Provide `check` and `build`
+
+Define `npm run check` and `npm run build` scripts, or override them with the [workflow inputs](#workflow-inputs-and-outputs). The build must produce `<rootDir>/appsscript.json`. Web apps declare `oauthScopes` explicitly; see [Scope changes](#scope-changes).
+
+#### 5. Create the Apps Script project and web app deployment
+
+For web apps, run `npm run deploy:setup` from [gas-dev-deploy](https://github.com/yorsh-co/gas-dev-deploy) and read `GAS_SCRIPT_ID` and `GAS_DEPLOYMENT_ID` from `.env`. Manually: copy the Script ID from Project Settings, then Deploy > New deployment > Web app, and copy the deployment ID (versioned, not HEAD). CI never creates the first deployment, because it requires an interactive consent prompt; this applies to both `npm run deploy:setup` and the editor path. `deploy:setup` writes the IDs to `.env` and has no per-environment option, so record them before running it again for the next environment.
+
+Libraries and bound scripts need only the script ID; see [Project types](#project-types). Use a separate script per environment.
+
+#### 6. Create the GitHub environment restricted to its branch
+
+Example for `dev` and `develop`; repeat for `live` and `main`. The deployment branch policy releases `CLASPRC_JSON` only to runs on that branch:
+
+```sh
+gh api -X PUT repos/{owner}/{repo}/environments/dev \
+  -F 'deployment_branch_policy[protected_branches]=false' \
+  -F 'deployment_branch_policy[custom_branch_policies]=true'
+gh api -X POST repos/{owner}/{repo}/environments/dev/deployment-branch-policies \
+  -f name=develop
+```
+
+Alternatively, in the UI: Settings > Environments > New environment > Deployment branches and tags > Selected branches.
+
+#### 7. Set the variables
+
+```sh
+gh variable set GAS_SCRIPT_ID --env dev --body <script-id>
+gh variable set GAS_DEPLOYMENT_ID --env dev --body <deployment-id>
+```
+
+`GAS_DEPLOYMENT_ID` is for web apps only. These are variables, not secrets; see [Environments](#environments).
+
+#### 8. Store `CLASPRC_JSON`
+
+Run `npx clasp login` on a trusted machine, ideally with a dedicated Google account that owns the scripts. Then store the credentials in the environment; repeat for `live`:
+
+```sh
+gh secret set CLASPRC_JSON --env dev < ~/.clasprc.json
+```
+
+See [Token expiry, revocation and rotation](#token-expiry-revocation-and-rotation).
+
+#### 9. Add the caller workflow
+
+Add the workflow from [Usage](#usage) at `.github/workflows/deploy.yml`.
+
+#### 10. Verify the first run
+
+Push to `develop`, then merge to `main` and confirm the `live` run. The job summary and the `url` output show the web app URL; a push-only project shows no URL. On a scope-change failure, follow [Scope changes](#scope-changes). On `invalid_grant`, follow [token rotation](#token-expiry-revocation-and-rotation).
+
 ## Usage
 
 ```yaml
@@ -84,15 +157,6 @@ The IDs are variables, not secrets, on purpose: GitHub drops job outputs that co
 | `url`  | Web app URL of the redeployed version; empty for a push-only deploy |
 
 The `check` and `build` steps run project code and never see `CLASPRC_JSON`.
-
-## Creating `CLASPRC_JSON`
-
-Run `npx clasp login` on a trusted machine, ideally with a dedicated Google account that owns the scripts. Then store the credentials in each environment:
-
-```sh
-gh secret set CLASPRC_JSON --env dev < ~/.clasprc.json
-gh secret set CLASPRC_JSON --env live < ~/.clasprc.json
-```
 
 ## Token expiry, revocation and rotation
 
