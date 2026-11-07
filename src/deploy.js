@@ -10,7 +10,7 @@ import { diffScopes } from './scopes.js';
 import { createRedactor, maskCommands, secretValues } from './secrets.js';
 
 /**
- * @typedef {Omit<import('./cli.js').CliContext, 'stderr'> & {
+ * @typedef {Omit<import('./cli.js').CliContext, 'stderr' | 'createClasp'> & {
  *   createClasp?: (options: Parameters<typeof defaultCreateClasp>[0]) => Pick<import('./clasp.js').Clasp, 'push' | 'listDeployments' | 'createVersion' | 'updateDeployment' | 'readVersionManifest'>
  * }} DeployContext
  */
