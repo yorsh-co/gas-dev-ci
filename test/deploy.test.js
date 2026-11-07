@@ -172,6 +172,22 @@ describe('deploy', () => {
     expect(existsSync(dirname(/** @type {string} */ (used.auth)))).toBe(false);
   });
 
+  it('removes the credentials directory when failing before clasp is created', async () => {
+    const tmp = join(root, 'tmp');
+    mkdirSync(tmp);
+    vi.stubEnv('TMPDIR', tmp);
+    try {
+      expect(tmpdir()).toBe(tmp);
+      rmSync(join(cwd, 'dist', 'appsscript.json'));
+      const { context } = setup();
+      const error = await deploy(context).catch((e) => e);
+      expect(error).toBeInstanceOf(DeployError);
+      expect(readdirSync(tmp)).toEqual([]);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('leaves an existing ~/.clasprc.json untouched', async () => {
     const home = join(root, 'home');
     mkdirSync(home);
@@ -180,8 +196,12 @@ describe('deploy', () => {
     vi.stubEnv('HOME', home);
     vi.stubEnv('USERPROFILE', home);
     try {
-      const { context } = setup();
-      await deploy(context);
+      const { context } = setup({ FAKE_CLASP_LOG: join(root, 'clasp.log') });
+      await deploy({
+        ...context,
+        createClasp: (/** @type {any} */ options) =>
+          createClasp({ ...options, bin: fakeClaspBin }),
+      });
     } finally {
       vi.unstubAllEnvs();
     }
