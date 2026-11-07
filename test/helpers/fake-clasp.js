@@ -2,7 +2,7 @@
 // @ts-check
 // Stand-in for the clasp entry script. Logs every call to $FAKE_CLASP_LOG; env vars pick the outcome:
 // FAKE_CLASP_DEPLOYMENTS (JSON), FAKE_CLASP_VERSION_OUTPUT (raw stdout of create-version),
-// FAKE_CLASP_DEPLOY_OUTPUT (raw stdout of deploy), FAKE_CLASP_MANIFEST (JSON written by pull),
+// FAKE_CLASP_DEPLOY_OUTPUT (raw stdout of create-deployment), FAKE_CLASP_MANIFEST (JSON written by pull),
 // FAKE_CLASP_KILL (command that kills itself with SIGTERM), FAKE_CLASP_NO_MANIFEST (pull writes nothing),
 // FAKE_CLASP_FAIL (command name that exits 1), FAKE_CLASP_ECHO (text printed on failure),
 // FAKE_CLASP_USER (email, empty = logged out), FAKE_CLASP_SCRIPT_ID (script id of create-script),
