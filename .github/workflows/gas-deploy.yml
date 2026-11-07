@@ -51,8 +51,12 @@ jobs:
           node-version: ${{ inputs.node-version }}
           cache: npm
       - run: npm ci
-      - run: ${{ inputs.check }}
-      - run: ${{ inputs.build }}
+      - run: eval "$GAS_CHECK"
+        env:
+          GAS_CHECK: ${{ inputs.check }}
+      - run: eval "$GAS_BUILD"
+        env:
+          GAS_BUILD: ${{ inputs.build }}
       - id: deploy
         run: npx --no-install gas-dev-ci deploy
         env:
