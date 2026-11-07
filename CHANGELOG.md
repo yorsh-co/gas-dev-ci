@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+---
+
+## [0.2.0] - 2026-11-07
+
 ### Added
 
 - `gas-dev-ci setup` command: the first-time setup wizard folded in from gas-dev-deploy 0.1.0, with bundled clasp, the `gasDevCi` config key in `package.json` and custom steps.
@@ -16,6 +20,11 @@
 - The clasp wrapper uses the canonical clasp command names.
 - `prompts` is now a runtime dependency.
 - README documents the setup wizard and migration from gas-dev-deploy.
+- Callers move to `@v0.2` (reusable workflow) and `#semver:^0.2.0` (dependency).
+
+### Removed
+
+- **Breaking:** the `CiError` export; use `DeployError` instead.
 
 ---
 
