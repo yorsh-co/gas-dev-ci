@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+---
+
+## [1.0.0] - 2026-11-07
+
 ### Added
 
 - `test:coverage` script with enforced coverage floors.
@@ -11,9 +15,12 @@
 - Package surface test.
 - ADR 0007 documenting the semver-covered public API and the fold path into gas-dev-config 3.0.
 - ADR 0008 security model.
+- ADR 0009 documenting the moving major tag.
 
 ### Changed
 
+- Callers move to `@v1` (reusable workflow) and `#semver:^1.0.0` (dependency).
+- README documents upgrading from 0.2.
 - `deploy()` and the CLI `main()` context no longer take `home`.
 - The reusable workflow passes the `check` and `build` inputs through env vars instead of interpolating them into `run:`.
 - `writeOutput` rejects line breaks in step output names and values.
