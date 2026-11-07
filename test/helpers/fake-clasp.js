@@ -117,7 +117,7 @@ function main() {
     process.stdout.write(
       `${env.FAKE_CLASP_VERSION_OUTPUT ?? JSON.stringify({ versionNumber: 7 })}\n`,
     );
-  } else if (command === 'deploy') {
+  } else if (command === 'create-deployment') {
     const id = args[args.indexOf('-i') + 1];
     process.stdout.write(
       `${env.FAKE_CLASP_DEPLOY_OUTPUT ?? JSON.stringify({ deploymentId: id, versionNumber: 7 })}\n`,

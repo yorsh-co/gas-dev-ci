@@ -195,7 +195,7 @@ export function createClasp({ cwd, env, redact = (text) => text, bin }) {
     },
     updateDeployment(id, version, description) {
       const data = runJson([
-        'deploy',
+        'create-deployment',
         '-i',
         id,
         '-V',
@@ -205,7 +205,7 @@ export function createClasp({ cwd, env, redact = (text) => text, bin }) {
       ]);
       if (data.deploymentId !== id) {
         throw new DeployError(
-          'clasp deploy returned a different deployment than requested.',
+          'clasp create-deployment returned a different deployment than requested.',
         );
       }
     },
