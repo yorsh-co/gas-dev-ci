@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Redeploy uses clasp's canonical `create-deployment` command instead of the `deploy` alias (ADR 0006).
+
 ---
 
 ## [0.2.0] - 2026-11-07

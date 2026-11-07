@@ -328,7 +328,7 @@ describe('secret leakage', () => {
         { deploymentId: DEPLOYMENT, versionNumber: 3 },
       ]),
       FAKE_CLASP_MANIFEST: JSON.stringify({ oauthScopes: ['a', 'b'] }),
-      FAKE_CLASP_FAIL: 'deploy',
+      FAKE_CLASP_FAIL: 'create-deployment',
       FAKE_CLASP_ECHO: `${REFRESH} ${ACCESS}`,
     });
     const context = {

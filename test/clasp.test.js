@@ -98,7 +98,7 @@ describe('createClasp', () => {
     make().updateDeployment('dep-1', 7, 'abc123');
     expect(readCalls(logPath)[0]?.args).toEqual([
       '--json',
-      'deploy',
+      'create-deployment',
       '-i',
       'dep-1',
       '-V',
@@ -201,22 +201,26 @@ describe('createClasp', () => {
     expect(message).not.toContain(SECRET);
   });
 
-  it.each(['create-version', 'deploy'])('redacts a failing %s', (command) => {
-    extraEnv.FAKE_CLASP_FAIL = command;
-    extraEnv.FAKE_CLASP_ECHO = SECRET;
-    const clasp = make();
-    let error;
-    try {
-      if (command === 'deploy') clasp.updateDeployment('d', 1, 'x');
-      else clasp.createVersion('x');
-    } catch (e) {
-      error = e;
-    }
-    const message = String(/** @type {Error} */ (error).message);
-    expect(error).toBeInstanceOf(DeployError);
-    expect(message).toContain(`clasp ${command} failed (exit 1)`);
-    expect(message).not.toContain(SECRET);
-  });
+  it.each(['create-version', 'create-deployment'])(
+    'redacts a failing %s',
+    (command) => {
+      extraEnv.FAKE_CLASP_FAIL = command;
+      extraEnv.FAKE_CLASP_ECHO = SECRET;
+      const clasp = make();
+      let error;
+      try {
+        if (command === 'create-deployment')
+          clasp.updateDeployment('d', 1, 'x');
+        else clasp.createVersion('x');
+      } catch (e) {
+        error = e;
+      }
+      const message = String(/** @type {Error} */ (error).message);
+      expect(error).toBeInstanceOf(DeployError);
+      expect(message).toContain(`clasp ${command} failed (exit 1)`);
+      expect(message).not.toContain(SECRET);
+    },
+  );
 
   it('reports the signal when clasp is killed', () => {
     extraEnv.FAKE_CLASP_KILL = 'push';
