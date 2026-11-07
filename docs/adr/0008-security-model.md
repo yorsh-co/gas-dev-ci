@@ -19,7 +19,7 @@ Controls:
 - Masking: with `GITHUB_ACTIONS` set, every string leaf of the credentials is masked with `::add-mask::`.
 - Redaction: string leaves of 8 or more characters are removed from clasp output before it reaches an error message.
 - Temporary credentials file: `deploy` writes the credentials (mode 0600) to a `mkdtemp` directory (mode 0700), passes it to clasp with `-A <file>`, and removes the directory in `finally`. It never writes to `~`, so an existing `~/.clasprc.json` is untouched. Under GitHub Actions the directory is created in `RUNNER_TEMP`, which the runner empties at the end of every job even when the step is killed; otherwise it is created in the OS temp dir.
-- Stripped child environment: clasp does not receive `CLASPRC_JSON`, `clasp_config_auth`, `clasp_config_project` or `clasp_config_ignore`.
+- Stripped child environment: clasp does not receive `CLASPRC_JSON`, `clasp_config_auth`, `clasp_config_project` or `clasp_config_ignore`, matched case-insensitively.
 - ID validation: script and deployment IDs are checked before use.
 - `.env`: written with mode 0600 and must be git-ignored.
 

@@ -58,6 +58,25 @@ describe('createClasp', () => {
     for (const key of STRIPPED) expect(keys).not.toContain(key);
   });
 
+  it('strips the clasp config overrides regardless of key case', () => {
+    extraEnv.CLASP_CONFIG_AUTH = '/elsewhere/auth';
+    extraEnv.Clasp_Config_Project = '/elsewhere/project';
+    extraEnv.CLASP_CONFIG_IGNORE = '/elsewhere/ignore';
+    extraEnv.clasprc_json = '{"tokens":{"default":{}}}';
+    extraEnv.GAS_DEV_CI_SENTINEL = 'x';
+    make().push();
+    const keys = readCalls(logPath)[0]?.envKeys ?? [];
+    expect(keys).toContain('GAS_DEV_CI_SENTINEL');
+    for (const key of [
+      'CLASP_CONFIG_AUTH',
+      'Clasp_Config_Project',
+      'CLASP_CONFIG_IGNORE',
+      'clasprc_json',
+    ]) {
+      expect(keys).not.toContain(key);
+    }
+  });
+
   it('lists deployments', () => {
     extraEnv.FAKE_CLASP_DEPLOYMENTS = JSON.stringify([
       { deploymentId: 'd1', versionNumber: 3 },

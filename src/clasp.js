@@ -12,6 +12,13 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { DeployError } from './errors.js';
 
+const STRIPPED_ENV = new Set([
+  'clasprc_json',
+  'clasp_config_auth',
+  'clasp_config_project',
+  'clasp_config_ignore',
+]);
+
 /**
  * Resolves the entry script of the installed `@google/clasp`. Its `exports` map does not expose
  * `package.json`, so the package root is found by walking up from the resolved entry point.
@@ -80,11 +87,10 @@ export function createClasp({ cwd, env, redact = (text) => text, bin, auth }) {
   const claspBin = bin ?? resolveClaspBin();
   // clasp reads clasp_config_* from the environment and they could redirect it to other credentials,
   // project or ignore file; CLASPRC_JSON holds the raw credentials and clasp must not see them.
-  const claspEnv = { ...env };
-  delete claspEnv.CLASPRC_JSON;
-  delete claspEnv.clasp_config_ignore;
-  delete claspEnv.clasp_config_auth;
-  delete claspEnv.clasp_config_project;
+  // Keys are matched case-insensitively (Windows env is case-insensitive).
+  const claspEnv = Object.fromEntries(
+    Object.entries(env).filter(([key]) => !STRIPPED_ENV.has(key.toLowerCase())),
+  );
 
   /**
    * @param {string[]} args
