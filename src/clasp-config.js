@@ -1,7 +1,7 @@
 // @ts-check
 import { readFileSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
-import { CiError } from './errors.js';
+import { DeployError } from './errors.js';
 
 const TEMPLATE = '.clasp.example.json';
 
@@ -20,9 +20,9 @@ function readTemplate(cwd) {
     text = readFileSync(join(cwd, TEMPLATE), 'utf8');
   } catch (error) {
     if (/** @type {NodeJS.ErrnoException} */ (error).code === 'ENOENT') {
-      throw new CiError(`${TEMPLATE} not found.`, { cause: error });
+      throw new DeployError(`${TEMPLATE} not found.`, { cause: error });
     }
-    throw new CiError(`Cannot read ${TEMPLATE}: ${errorMessage(error)}.`, {
+    throw new DeployError(`Cannot read ${TEMPLATE}: ${errorMessage(error)}.`, {
       cause: error,
     });
   }
@@ -30,12 +30,15 @@ function readTemplate(cwd) {
   try {
     data = JSON.parse(text);
   } catch (error) {
-    throw new CiError(`${TEMPLATE} is not valid JSON: ${errorMessage(error)}`, {
-      cause: error,
-    });
+    throw new DeployError(
+      `${TEMPLATE} is not valid JSON: ${errorMessage(error)}`,
+      {
+        cause: error,
+      },
+    );
   }
   if (typeof data !== 'object' || data === null || Array.isArray(data)) {
-    throw new CiError(`${TEMPLATE} must contain a JSON object.`);
+    throw new DeployError(`${TEMPLATE} must contain a JSON object.`);
   }
   return data;
 }
@@ -49,10 +52,10 @@ function validateRootDir(value) {
     return '.';
   }
   if (typeof value !== 'string' || value.trim() === '') {
-    throw new CiError(`${TEMPLATE} rootDir must be a non-empty string.`);
+    throw new DeployError(`${TEMPLATE} rootDir must be a non-empty string.`);
   }
   if (isAbsolute(value) || value.split(/[\\/]/).includes('..')) {
-    throw new CiError(
+    throw new DeployError(
       `${TEMPLATE} rootDir "${value}" must be a relative path inside the project.`,
     );
   }
@@ -66,7 +69,7 @@ function validateRootDir(value) {
  * @param {string} cwd Project root.
  * @param {string} scriptId
  * @returns {{ rootDir: string, manifestPath: string }}
- * @throws {CiError} If the template is missing or invalid.
+ * @throws {DeployError} If the template is missing or invalid.
  */
 export function renderClaspConfig(cwd, scriptId) {
   const template = readTemplate(cwd);

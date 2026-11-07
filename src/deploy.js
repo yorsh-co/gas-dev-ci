@@ -3,15 +3,15 @@ import { readFileSync } from 'node:fs';
 import { createClasp as defaultCreateClasp } from './clasp.js';
 import { renderClaspConfig } from './clasp-config.js';
 import { writeCredentials } from './credentials.js';
-import { CiError } from './errors.js';
+import { DeployError } from './errors.js';
 import { writeOutput, writeSummary } from './github.js';
 import { readInputs } from './inputs.js';
 import { diffScopes } from './scopes.js';
 import { createRedactor, maskCommands, secretValues } from './secrets.js';
 
 /**
- * @typedef {Omit<import('./cli.js').CliContext, 'stderr'> & {
- *   createClasp?: (options: Parameters<typeof defaultCreateClasp>[0]) => import('./clasp.js').Clasp
+ * @typedef {Omit<import('./cli.js').CliContext, 'stderr' | 'createClasp'> & {
+ *   createClasp?: (options: Parameters<typeof defaultCreateClasp>[0]) => Pick<import('./clasp.js').Clasp, 'push' | 'listDeployments' | 'createVersion' | 'updateDeployment' | 'readVersionManifest'>
  * }} DeployContext
  */
 
@@ -32,7 +32,7 @@ function scopeLines(title, scopes) {
  *
  * @param {DeployContext} context
  * @returns {Promise<void>}
- * @throws {CiError} On invalid inputs, a scope change or a clasp failure.
+ * @throws {DeployError} On invalid inputs, a scope change or a clasp failure.
  */
 export async function deploy({
   env,
@@ -59,11 +59,11 @@ export async function deploy({
     localManifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
   } catch (error) {
     if (/** @type {NodeJS.ErrnoException} */ (error).code === 'ENOENT') {
-      throw new CiError(
+      throw new DeployError(
         `${rootDir}/appsscript.json not found; run the build first.`,
       );
     }
-    throw new CiError(`${rootDir}/appsscript.json is not valid JSON.`);
+    throw new DeployError(`${rootDir}/appsscript.json is not valid JSON.`);
   }
 
   const clasp = createClasp({ cwd, env, redact });
@@ -71,7 +71,7 @@ export async function deploy({
 
   if (deploymentId !== undefined) {
     if (sha === undefined) {
-      throw new CiError(
+      throw new DeployError(
         'GITHUB_SHA is not set; it is the description of the redeployed version.',
       );
     }
@@ -84,7 +84,7 @@ export async function deploy({
           item.deploymentId === deploymentId,
       );
     if (deployment === undefined) {
-      throw new CiError(
+      throw new DeployError(
         'GAS_DEPLOYMENT_ID does not match any deployment of the script.',
       );
     }
@@ -94,14 +94,14 @@ export async function deploy({
       !Number.isInteger(versionNumber) ||
       versionNumber < 1
     ) {
-      throw new CiError(
+      throw new DeployError(
         'GAS_DEPLOYMENT_ID points to the HEAD deployment; use a versioned web app deployment.',
       );
     }
     const deployed = clasp.readVersionManifest(inputs.scriptId, versionNumber);
     const { added, removed } = diffScopes(localManifest, deployed);
     if (added.length > 0 || removed.length > 0) {
-      throw new CiError(
+      throw new DeployError(
         [
           `The OAuth scopes changed since version ${versionNumber}; nothing was pushed.`,
           ...scopeLines('Added', added),

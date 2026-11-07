@@ -1,5 +1,5 @@
 // @ts-check
-import { CiError } from './errors.js';
+import { DeployError } from './errors.js';
 
 /**
  * @typedef {object} Inputs
@@ -25,11 +25,11 @@ const ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 /**
  * @param {string} name
  * @param {string | undefined} value
- * @throws {CiError} If the value contains characters outside an Apps Script ID.
+ * @throws {DeployError} If the value contains characters outside an Apps Script ID.
  */
 function assertId(name, value) {
   if (value !== undefined && !ID_PATTERN.test(value)) {
-    throw new CiError(`${name} contains characters not allowed in an ID.`);
+    throw new DeployError(`${name} contains characters not allowed in an ID.`);
   }
 }
 
@@ -39,12 +39,12 @@ function assertId(name, value) {
  *
  * @param {NodeJS.ProcessEnv} env
  * @returns {Inputs}
- * @throws {CiError} If a required variable is missing or invalid.
+ * @throws {DeployError} If a required variable is missing or invalid.
  */
 export function readInputs(env) {
   const raw = nonEmpty(env.CLASPRC_JSON);
   if (raw === undefined) {
-    throw new CiError(
+    throw new DeployError(
       'CLASPRC_JSON is not set. Add it as a secret of the deployment environment.',
     );
   }
@@ -53,14 +53,14 @@ export function readInputs(env) {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new CiError('CLASPRC_JSON is not valid JSON.');
+    throw new DeployError('CLASPRC_JSON is not valid JSON.');
   }
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new CiError('CLASPRC_JSON must contain a JSON object.');
+    throw new DeployError('CLASPRC_JSON must contain a JSON object.');
   }
   const scriptId = nonEmpty(env.GAS_SCRIPT_ID);
   if (scriptId === undefined) {
-    throw new CiError(
+    throw new DeployError(
       'GAS_SCRIPT_ID is not set. Add it as a variable of the deployment environment.',
     );
   }

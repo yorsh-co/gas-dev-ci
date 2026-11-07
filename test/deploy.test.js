@@ -13,7 +13,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { main } from '../src/cli.js';
 import { createClasp } from '../src/clasp.js';
-import { CiError } from '../src/errors.js';
+import { DeployError } from '../src/errors.js';
 import { deploy } from '../src/deploy.js';
 import { fakeClaspBin } from './helpers/fake-clasp.js';
 
@@ -190,7 +190,7 @@ describe('deploy', () => {
       { deployedScopes: ['a', 'old'] },
     );
     const error = await deploy(context).catch((e) => e);
-    expect(error).toBeInstanceOf(CiError);
+    expect(error).toBeInstanceOf(DeployError);
     expect(error.message).toContain('Added:\n  b');
     expect(error.message).toContain('Removed:\n  old');
     expect(error.message).toContain('#scope-changes');
@@ -206,7 +206,9 @@ describe('deploy', () => {
       text: '',
       write: (/** @type {string} */ t) => (err.text += t),
     };
-    expect(await main(['deploy'], { ...context, stderr: err })).toBe(1);
+    expect(
+      await main(['deploy'], /** @type {any} */ ({ ...context, stderr: err })),
+    ).toBe(1);
     expect(err.text).toContain('Added');
     expect(calls).not.toContain('push');
   });
@@ -305,7 +307,10 @@ describe('secret leakage', () => {
       text: '',
       write: (/** @type {string} */ t) => (err.text += t),
     };
-    const code = await main(['deploy'], { ...context, stderr: err });
+    const code = await main(
+      ['deploy'],
+      /** @type {any} */ ({ ...context, stderr: err }),
+    );
     expect(code).toBe(1);
     expect(err.text).toContain('***');
     expect(leaks(s.stdout.text + s.output() + s.summary() + err.text)).toBe(
@@ -335,7 +340,9 @@ describe('secret leakage', () => {
       text: '',
       write: (/** @type {string} */ t) => (err.text += t),
     };
-    expect(await main(['deploy'], { ...context, stderr: err })).toBe(1);
+    expect(
+      await main(['deploy'], /** @type {any} */ ({ ...context, stderr: err })),
+    ).toBe(1);
     expect(err.text).toContain('exploded');
     expect(leaks(err.text + s.output() + s.summary())).toBe(false);
     const unmasked = s.stdout.text

@@ -5,7 +5,7 @@
 
 ## Context
 
-The HEAD deployment drives triggers, menus and test deployments. Pushing new OAuth scopes the owner has not consented to can break them, and `clasp deploy` cannot trigger the consent (gas-dev-deploy ADR 0001).
+The HEAD deployment drives triggers, menus and test deployments. Pushing new OAuth scopes the owner has not consented to can break them, and `clasp deploy` cannot trigger the consent (ADR 0004).
 
 ## Decision
 

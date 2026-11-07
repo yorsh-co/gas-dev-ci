@@ -1,3 +1,3 @@
 // @ts-check
-export { CiError } from './errors.js';
+export { DeployError } from './errors.js';
 export { deploy } from './deploy.js';
