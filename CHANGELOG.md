@@ -4,6 +4,19 @@
 
 ## [Unreleased]
 
+### Added
+
+- `gas-dev-ci setup` command: the first-time setup wizard folded in from gas-dev-deploy 0.1.0, with bundled clasp, the `gasDevCi` config key in `package.json` and custom steps.
+- `DeployError` and type declarations export, and a package `exports` map.
+- ADRs 0004-0006 documenting the setup fold.
+
+### Changed
+
+- **Breaking:** rename `CiError` to `DeployError`.
+- The clasp wrapper uses the canonical clasp command names.
+- `prompts` is now a runtime dependency.
+- README documents the setup wizard and migration from gas-dev-deploy.
+
 ---
 
 ## [0.1.1] - 2026-11-07
