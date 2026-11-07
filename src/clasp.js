@@ -10,7 +10,7 @@ import {
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { CiError } from './errors.js';
+import { DeployError } from './errors.js';
 
 /**
  * Resolves the entry script of the installed `@google/clasp`. Its `exports` map does not expose
@@ -39,15 +39,26 @@ export function resolveClaspBin() {
   } catch {
     // Falls through to the error below.
   }
-  throw new CiError(
+  throw new DeployError(
     'Could not resolve the @google/clasp bin; is it installed?',
   );
 }
 
 /**
+ * @typedef {object} Deployment
+ * @property {string} deploymentId
+ * @property {number} [versionNumber] Absent for the HEAD deployment.
+ * @property {string} [description]
+ */
+
+/**
  * @typedef {object} Clasp
+ * @property {() => { loggedIn: boolean, email: string | undefined }} whoAmI
+ * @property {() => void} login Interactive; inherits the terminal.
+ * @property {(title: string) => { scriptId: string }} create
+ * @property {() => void} openScript Interactive; inherits the terminal.
  * @property {() => void} push
- * @property {() => { deploymentId: string, versionNumber?: number, description?: string }[]} listDeployments
+ * @property {(scriptId?: string) => Deployment[]} listDeployments
  * @property {(description: string) => number} createVersion
  * @property {(id: string, version: number, description: string) => void} updateDeployment
  * @property {(scriptId: string, version: number) => any} readVersionManifest
@@ -60,11 +71,11 @@ export function resolveClaspBin() {
  * @param {object} options
  * @param {string} options.cwd
  * @param {NodeJS.ProcessEnv} options.env
- * @param {(text: string) => string} options.redact
+ * @param {(text: string) => string} [options.redact] Applied to clasp output in error messages; identity by default.
  * @param {string} [options.bin] clasp entry script; defaults to the installed `@google/clasp`.
  * @returns {Clasp}
  */
-export function createClasp({ cwd, env, redact, bin }) {
+export function createClasp({ cwd, env, redact = (text) => text, bin }) {
   const claspBin = bin ?? resolveClaspBin();
   // clasp reads these from the environment and they could redirect it to other credentials or project.
   const claspEnv = { ...env };
@@ -73,7 +84,8 @@ export function createClasp({ cwd, env, redact, bin }) {
 
   /**
    * @param {string[]} args
-   * @param {{ cwd?: string }} [options]
+   * @param {{ cwd?: string, inherit?: boolean }} [options] `inherit` attaches clasp to the terminal,
+   *   so its output is not captured or included in failure messages.
    * @returns {string}
    */
   function run(args, options = {}) {
@@ -83,18 +95,19 @@ export function createClasp({ cwd, env, redact, bin }) {
       cwd: options.cwd ?? cwd,
       env: claspEnv,
       encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: options.inherit ? 'inherit' : ['ignore', 'pipe', 'pipe'],
     });
     if (result.error) {
-      throw new CiError(
+      throw new DeployError(
         `clasp ${name} failed to start: ${redact(result.error.message)}`,
       );
     }
     if (result.status !== 0) {
-      const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim();
-      throw new CiError(
-        `clasp ${name} failed (exit ${result.status ?? result.signal}):\n${redact(output)}`,
-      );
+      const status = result.status ?? result.signal;
+      const output = options.inherit
+        ? ''
+        : `\n${redact(`${result.stdout ?? ''}${result.stderr ?? ''}`.trim())}`;
+      throw new DeployError(`clasp ${name} failed (exit ${status}):${output}`);
     }
     return result.stdout ?? '';
   }
@@ -104,15 +117,16 @@ export function createClasp({ cwd, env, redact, bin }) {
    *
    * @param {string[]} args
    * @param {'object' | 'array'} [shape]
+   * @param {{ cwd?: string }} [options]
    * @returns {any}
    */
-  function runJson(args, shape = 'object') {
-    const stdout = run(['--json', ...args]);
+  function runJson(args, shape = 'object', options = {}) {
+    const stdout = run(['--json', ...args], options);
     let data;
     try {
       data = JSON.parse(stdout);
     } catch {
-      throw new CiError(
+      throw new DeployError(
         `clasp ${args[0]} returned invalid JSON:\n${redact(stdout.trim())}`,
       );
     }
@@ -121,7 +135,7 @@ export function createClasp({ cwd, env, redact, bin }) {
         ? Array.isArray(data)
         : typeof data === 'object' && data !== null && !Array.isArray(data);
     if (!valid) {
-      throw new CiError(
+      throw new DeployError(
         `clasp ${args[0]} returned an unexpected result:\n${redact(stdout.trim())}`,
       );
     }
@@ -132,13 +146,48 @@ export function createClasp({ cwd, env, redact, bin }) {
     push() {
       run(['push', '--force']);
     },
-    listDeployments() {
-      return runJson(['list-deployments'], 'array');
+    listDeployments(scriptId) {
+      return runJson(
+        ['list-deployments', ...(scriptId ? [scriptId] : [])],
+        'array',
+      );
+    },
+    whoAmI() {
+      const data = /** @type {{ loggedIn?: boolean, email?: string }} */ (
+        runJson(['show-authorized-user'])
+      );
+      return { loggedIn: data.loggedIn === true, email: data.email };
+    },
+    login() {
+      run(['login'], { inherit: true });
+    },
+    create(title) {
+      const dir = mkdtempSync(join(tmpdir(), 'gas-dev-ci-create-'));
+      try {
+        const data = /** @type {{ scriptId?: string }} */ (
+          runJson(
+            ['create-script', '--title', title, '--rootDir', dir],
+            'object',
+            { cwd: dir },
+          )
+        );
+        if (typeof data.scriptId !== 'string' || data.scriptId === '') {
+          throw new DeployError(
+            'clasp create-script did not return a scriptId.',
+          );
+        }
+        return { scriptId: data.scriptId };
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+    openScript() {
+      run(['open-script'], { inherit: true });
     },
     createVersion(description) {
       const data = runJson(['create-version', description]);
       if (!Number.isInteger(data.versionNumber) || data.versionNumber < 1) {
-        throw new CiError(
+        throw new DeployError(
           'clasp create-version did not return a valid version number.',
         );
       }
@@ -155,7 +204,7 @@ export function createClasp({ cwd, env, redact, bin }) {
         description,
       ]);
       if (data.deploymentId !== id) {
-        throw new CiError(
+        throw new DeployError(
           'clasp deploy returned a different deployment than requested.',
         );
       }
@@ -180,7 +229,7 @@ export function createClasp({ cwd, env, redact, bin }) {
           }
           return manifest;
         } catch {
-          throw new CiError(
+          throw new DeployError(
             `Version ${version} of the script has no readable appsscript.json.`,
           );
         }

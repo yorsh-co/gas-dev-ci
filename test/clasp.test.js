@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createClasp, resolveClaspBin } from '../src/clasp.js';
-import { CiError } from '../src/errors.js';
+import { DeployError } from '../src/errors.js';
 import { fakeClaspBin, readCalls } from './helpers/fake-clasp.js';
 
 const SECRET = 'super-secret-token';
@@ -70,7 +70,7 @@ describe('createClasp', () => {
     } catch (e) {
       error = e;
     }
-    expect(error).toBeInstanceOf(CiError);
+    expect(error).toBeInstanceOf(DeployError);
     expect(String(/** @type {Error} */ (error).message)).toMatch(
       /invalid JSON/,
     );
@@ -165,7 +165,9 @@ describe('createClasp', () => {
 
   it('rejects a pull that writes no manifest and removes the temp dir', () => {
     extraEnv.FAKE_CLASP_NO_MANIFEST = '1';
-    expect(() => make().readVersionManifest('script-1', 4)).toThrow(CiError);
+    expect(() => make().readVersionManifest('script-1', 4)).toThrow(
+      DeployError,
+    );
     expect(() => make().readVersionManifest('script-1', 4)).toThrow(
       /no readable appsscript\.json/,
     );
@@ -194,7 +196,7 @@ describe('createClasp', () => {
       error = e;
     }
     const message = String(/** @type {Error} */ (error).message);
-    expect(error).toBeInstanceOf(CiError);
+    expect(error).toBeInstanceOf(DeployError);
     expect(message).toMatch(/unexpected result/);
     expect(message).not.toContain(SECRET);
   });
@@ -211,7 +213,7 @@ describe('createClasp', () => {
       error = e;
     }
     const message = String(/** @type {Error} */ (error).message);
-    expect(error).toBeInstanceOf(CiError);
+    expect(error).toBeInstanceOf(DeployError);
     expect(message).toContain(`clasp ${command} failed (exit 1)`);
     expect(message).not.toContain(SECRET);
   });
@@ -229,6 +231,149 @@ describe('createClasp', () => {
       bin: fakeClaspBin,
     });
     expect(() => clasp.push()).toThrow(/clasp push failed to start/);
+  });
+});
+
+describe('createClasp setup commands', () => {
+  /** @type {string} */
+  let dir;
+  /** @type {string} */
+  let logPath;
+  /** @type {Record<string, string>} */
+  let extraEnv;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'clasp-test-'));
+    logPath = join(dir, 'calls.log');
+    extraEnv = {};
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  const make = () =>
+    createClasp({
+      cwd: dir,
+      env: { ...process.env, FAKE_CLASP_LOG: logPath, ...extraEnv },
+      bin: fakeClaspBin,
+    });
+
+  it('reports the authorized user', () => {
+    extraEnv.FAKE_CLASP_USER = 'me@example.com';
+    expect(make().whoAmI()).toEqual({
+      loggedIn: true,
+      email: 'me@example.com',
+    });
+    expect(readCalls(logPath)[0]?.args).toEqual([
+      '--json',
+      'show-authorized-user',
+    ]);
+  });
+
+  it('reports a logged-out user', () => {
+    expect(make().whoAmI()).toEqual({ loggedIn: false, email: undefined });
+  });
+
+  it('rejects a show-authorized-user result that is not an object', () => {
+    extraEnv.FAKE_CLASP_OUTPUT = '[]';
+    expect(() => make().whoAmI()).toThrow(/unexpected result/);
+  });
+
+  it('logs in and then reports the new user', () => {
+    extraEnv.FAKE_CLASP_LOGIN_USER = 'new@example.com';
+    const clasp = make();
+    clasp.login();
+    expect(readCalls(logPath)[0]?.args).toEqual(['login']);
+    expect(clasp.whoAmI().email).toBe('new@example.com');
+  });
+
+  it('opens the script', () => {
+    make().openScript();
+    expect(readCalls(logPath)[0]?.args).toEqual(['open-script']);
+  });
+
+  it('creates a script in a temp dir that is removed afterwards', () => {
+    extraEnv.FAKE_CLASP_SCRIPT_ID = 'abc';
+    expect(make().create('My app')).toEqual({ scriptId: 'abc' });
+    const [call] = readCalls(logPath);
+    const rootDir = /** @type {string} */ (call?.args[5]);
+    expect(call?.args.slice(0, 5)).toEqual([
+      '--json',
+      'create-script',
+      '--title',
+      'My app',
+      '--rootDir',
+    ]);
+    expect(call?.cwd).toContain('gas-dev-ci-create-');
+    expect(rootDir).toBeTruthy();
+    expect(existsSync(rootDir)).toBe(false);
+  });
+
+  it('removes the create temp dir when clasp fails', () => {
+    extraEnv.FAKE_CLASP_FAIL = 'create-script';
+    expect(() => make().create('x')).toThrow(DeployError);
+    const [call] = readCalls(logPath);
+    expect(existsSync(/** @type {string} */ (call?.args[5]))).toBe(false);
+  });
+
+  it.each(['{}', '{"scriptId":""}', '{"scriptId":3}', '[]'])(
+    'rejects a create-script result %s',
+    (output) => {
+      extraEnv.FAKE_CLASP_OUTPUT = output;
+      expect(() => make().create('x')).toThrow(DeployError);
+    },
+  );
+
+  it('omits captured output from an inherited command failure', () => {
+    extraEnv.FAKE_CLASP_FAIL = 'login';
+    extraEnv.FAKE_CLASP_ECHO = 'leaky-detail';
+    let error;
+    try {
+      make().login();
+    } catch (e) {
+      error = e;
+    }
+    const message = String(/** @type {Error} */ (error).message);
+    expect(message).toBe('clasp login failed (exit 1):');
+    expect(message).not.toContain('exploded');
+    expect(message).not.toContain('leaky-detail');
+  });
+
+  it('returns no captured output from a successful inherited command', () => {
+    expect(make().login()).toBeUndefined();
+  });
+
+  it('reports logged in without an email', () => {
+    extraEnv.FAKE_CLASP_OUTPUT = '{"loggedIn":true}';
+    expect(make().whoAmI()).toEqual({ loggedIn: true, email: undefined });
+  });
+
+  it('treats a non-boolean loggedIn as logged out', () => {
+    extraEnv.FAKE_CLASP_OUTPUT = '{"loggedIn":"true"}';
+    expect(make().whoAmI().loggedIn).toBe(false);
+  });
+
+  it('lists deployments without a scriptId for an empty string', () => {
+    extraEnv.FAKE_CLASP_DEPLOYMENTS = '[]';
+    make().listDeployments('');
+    expect(readCalls(logPath)[0]?.args).toEqual(['--json', 'list-deployments']);
+  });
+
+  it('strips the clasp config overrides', () => {
+    extraEnv.clasp_config_auth = '/elsewhere/auth';
+    extraEnv.clasp_config_project = '/elsewhere/project';
+    make().whoAmI();
+    make().login();
+    for (const call of readCalls(logPath)) expect(call.claspEnv).toEqual({});
+  });
+
+  it('lists deployments with and without a scriptId', () => {
+    extraEnv.FAKE_CLASP_DEPLOYMENTS = JSON.stringify([{ deploymentId: 'd1' }]);
+    const clasp = make();
+    expect(clasp.listDeployments()).toEqual([{ deploymentId: 'd1' }]);
+    expect(clasp.listDeployments('s1')).toEqual([{ deploymentId: 'd1' }]);
+    expect(readCalls(logPath).map((c) => c.args)).toEqual([
+      ['--json', 'list-deployments'],
+      ['--json', 'list-deployments', 's1'],
+    ]);
   });
 });
 

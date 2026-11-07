@@ -4,8 +4,18 @@
 // FAKE_CLASP_DEPLOYMENTS (JSON), FAKE_CLASP_VERSION_OUTPUT (raw stdout of create-version),
 // FAKE_CLASP_DEPLOY_OUTPUT (raw stdout of deploy), FAKE_CLASP_MANIFEST (JSON written by pull),
 // FAKE_CLASP_KILL (command that kills itself with SIGTERM), FAKE_CLASP_NO_MANIFEST (pull writes nothing),
-// FAKE_CLASP_FAIL (command name that exits 1), FAKE_CLASP_ECHO (text printed on failure).
-import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
+// FAKE_CLASP_FAIL (command name that exits 1), FAKE_CLASP_ECHO (text printed on failure),
+// FAKE_CLASP_USER (email, empty = logged out), FAKE_CLASP_SCRIPT_ID (script id of create-script),
+// FAKE_CLASP_OUTPUT (raw stdout for show-authorized-user and create-script), FAKE_CLASP_LOGIN_USER
+// (email that `login` signs in: later show-authorized-user calls report it, tracked in a state file
+// next to the log). Handles show-authorized-user, login, create-script, open-script and
+// list-deployments [scriptId] besides the deploy commands.
+import {
+  appendFileSync,
+  existsSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -73,7 +83,35 @@ function main() {
   const json = (/** @type {unknown} */ value) =>
     process.stdout.write(`${JSON.stringify(value)}\n`);
 
-  if (command === 'list-deployments') {
+  if (
+    env.FAKE_CLASP_OUTPUT !== undefined &&
+    (command === 'show-authorized-user' || command === 'create-script')
+  ) {
+    process.stdout.write(`${env.FAKE_CLASP_OUTPUT}\n`);
+  } else if (command === 'show-authorized-user') {
+    const loggedInFile = `${env.FAKE_CLASP_LOG}.login`;
+    const email = existsSync(loggedInFile)
+      ? readFileSync(loggedInFile, 'utf8')
+      : (env.FAKE_CLASP_USER ?? '');
+    json(email ? { loggedIn: true, email } : { loggedIn: false });
+  } else if (command === 'create-script') {
+    const rootDir = /** @type {string} */ (args[args.indexOf('--rootDir') + 1]);
+    const scriptId = env.FAKE_CLASP_SCRIPT_ID ?? 'script-123';
+    writeFileSync(
+      join(rootDir, '.clasp.json'),
+      JSON.stringify({ scriptId, rootDir }),
+    );
+    writeFileSync(
+      join(rootDir, 'appsscript.json'),
+      JSON.stringify({ timeZone: 'America/New_York' }),
+    );
+    json({ scriptId });
+  } else if (command === 'login' || command === 'open-script') {
+    if (command === 'login' && env.FAKE_CLASP_LOGIN_USER) {
+      writeFileSync(`${env.FAKE_CLASP_LOG}.login`, env.FAKE_CLASP_LOGIN_USER);
+    }
+    process.stdout.write(`${command} ok\n`);
+  } else if (command === 'list-deployments') {
     process.stdout.write(`${env.FAKE_CLASP_DEPLOYMENTS ?? '[]'}\n`);
   } else if (command === 'create-version') {
     process.stdout.write(

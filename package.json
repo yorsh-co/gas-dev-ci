@@ -2,7 +2,7 @@
   "name": "gas-dev-ci",
   "version": "0.1.1",
   "private": true,
-  "description": "CI deployment for Google Apps Script projects: a reusable GitHub Actions workflow and CLI that push with clasp and redeploy web apps.",
+  "description": "Setup and CI deployment for Google Apps Script web apps: a guided setup wizard, and a reusable GitHub Actions workflow and CLI that push with clasp and redeploy.",
   "repository": {
     "type": "git",
     "url": "https://github.com/yorsh-co/gas-dev-ci.git"
@@ -20,9 +20,17 @@
   "bin": {
     "gas-dev-ci": "bin/gas-dev-ci.js"
   },
+  "exports": {
+    ".": {
+      "types": "./types.d.ts",
+      "default": "./src/index.js"
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "bin",
-    "src"
+    "src",
+    "types.d.ts"
   ],
   "prettier": "gas-dev-config/prettier",
   "overrides": {
@@ -33,7 +41,9 @@
     "preset": "node"
   },
   "dependencies": {
-    "@google/clasp": "^3.4.1"
+    "@google/clasp": "^3.4.1",
+    "@types/prompts": "^2.4.9",
+    "prompts": "^2.4.2"
   },
   "devDependencies": {
     "@action-validator/cli": "^0.6.0",

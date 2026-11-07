@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { renderClaspConfig } from '../src/clasp-config.js';
-import { CiError } from '../src/errors.js';
+import { DeployError } from '../src/errors.js';
 
 /** @type {string} */
 let cwd;
@@ -54,7 +54,7 @@ describe('renderClaspConfig', () => {
     if (text !== undefined) {
       writeTemplate(text);
     }
-    expect(() => renderClaspConfig(cwd, 's')).toThrow(CiError);
+    expect(() => renderClaspConfig(cwd, 's')).toThrow(DeployError);
     expect(() => renderClaspConfig(cwd, 's')).toThrow(expected);
   });
 });

@@ -1,6 +1,6 @@
 // @ts-check
 import { describe, expect, it } from 'vitest';
-import { CiError } from '../src/errors.js';
+import { DeployError } from '../src/errors.js';
 import { readInputs } from '../src/inputs.js';
 
 const SECRET = 'super-secret-refresh-token';
@@ -14,7 +14,7 @@ function messageOf(env) {
   try {
     readInputs(env);
   } catch (error) {
-    expect(error).toBeInstanceOf(CiError);
+    expect(error).toBeInstanceOf(DeployError);
     return /** @type {Error} */ (error).message;
   }
   throw new Error('expected readInputs to throw');
