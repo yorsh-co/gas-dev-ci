@@ -33,7 +33,9 @@
     "preset": "node"
   },
   "dependencies": {
-    "@google/clasp": "^3.4.1"
+    "@google/clasp": "^3.4.1",
+    "@types/prompts": "^2.4.9",
+    "prompts": "^2.4.2"
   },
   "devDependencies": {
     "@action-validator/cli": "^0.6.0",
