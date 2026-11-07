@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+### Added
+
+- Step-by-step setup guide in the README.
+
+### Changed
+
+- Fold the "Creating `CLASPRC_JSON`" section into Setup step 8.
+
 ### Fixed
 
 - Override `gaxios` to `^7.3.1` per gas-dev-config ADR 0005, removing the vulnerable `rimraf` 5 / `glob` 10 chain.
