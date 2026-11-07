@@ -1,7 +1,7 @@
 // @ts-check
 import { describe, expect, it, vi } from 'vitest';
 import pkg from '../package.json' with { type: 'json' };
-import { CiError } from '../src/errors.js';
+import { DeployError } from '../src/errors.js';
 
 vi.mock('../src/deploy.js', () => ({ deploy: vi.fn() }));
 
@@ -52,9 +52,9 @@ describe('main', () => {
     expect(deploy).toHaveBeenCalledWith(context);
   });
 
-  it('returns 1 and prints the message for a CiError', async () => {
+  it('returns 1 and prints the message for a DeployError', async () => {
     const { context, err } = setup();
-    vi.mocked(deploy).mockRejectedValueOnce(new CiError('boom'));
+    vi.mocked(deploy).mockRejectedValueOnce(new DeployError('boom'));
     expect(await main(['deploy'], context)).toBe(1);
     expect(err.join('')).toBe('boom\n');
   });

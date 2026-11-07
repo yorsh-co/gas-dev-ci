@@ -13,7 +13,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { main } from '../src/cli.js';
 import { createClasp } from '../src/clasp.js';
-import { CiError } from '../src/errors.js';
+import { DeployError } from '../src/errors.js';
 import { deploy } from '../src/deploy.js';
 import { fakeClaspBin } from './helpers/fake-clasp.js';
 
@@ -190,7 +190,7 @@ describe('deploy', () => {
       { deployedScopes: ['a', 'old'] },
     );
     const error = await deploy(context).catch((e) => e);
-    expect(error).toBeInstanceOf(CiError);
+    expect(error).toBeInstanceOf(DeployError);
     expect(error.message).toContain('Added:\n  b');
     expect(error.message).toContain('Removed:\n  old');
     expect(error.message).toContain('#scope-changes');

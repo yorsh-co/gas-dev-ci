@@ -1,7 +1,7 @@
 // @ts-check
 import pkg from '../package.json' with { type: 'json' };
 import { deploy } from './deploy.js';
-import { CiError } from './errors.js';
+import { isDeployError } from './errors.js';
 
 const USAGE = `Usage: gas-dev-ci <command>
 
@@ -50,7 +50,7 @@ export async function main(argv, context) {
     await deploy(context);
     return 0;
   } catch (error) {
-    if (error instanceof CiError) {
+    if (isDeployError(error)) {
       stderr.write(`${error.message}\n`);
       return 1;
     }
