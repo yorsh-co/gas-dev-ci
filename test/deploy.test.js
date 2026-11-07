@@ -199,6 +199,26 @@ describe('deploy', () => {
     expect(readdirSync(runnerTemp)).toEqual([]);
   });
 
+  it('leaves RUNNER_TEMP empty when a step fails', async () => {
+    const runnerTemp = join(root, 'runner-temp');
+    mkdirSync(runnerTemp);
+    const { context } = setup({
+      RUNNER_TEMP: runnerTemp,
+      GAS_DEPLOYMENT_ID: DEPLOYMENT,
+      GITHUB_SHA: 'abc123',
+    });
+    context.createClasp = (/** @type {any} */ options) => ({
+      ...fakeClasp().createClasp(options),
+      push: () => {
+        throw new DeployError('push failed');
+      },
+      listDeployments: () => [{ deploymentId: DEPLOYMENT, versionNumber: 3 }],
+      readVersionManifest: () => ({ oauthScopes: ['a', 'b'] }),
+    });
+    await expect(deploy(context)).rejects.toThrow('push failed');
+    expect(readdirSync(runnerTemp)).toEqual([]);
+  });
+
   it('fails with a DeployError when RUNNER_TEMP does not exist', async () => {
     const { context } = setup({ RUNNER_TEMP: join(root, 'missing') });
     const error = await deploy(context).catch((e) => e);
