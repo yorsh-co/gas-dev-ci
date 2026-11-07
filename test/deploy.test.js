@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { main } from '../src/cli.js';
 import { createClasp } from '../src/clasp.js';
@@ -186,6 +186,24 @@ describe('deploy', () => {
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+
+  it('creates the credentials directory in RUNNER_TEMP when set', async () => {
+    const runnerTemp = join(root, 'runner-temp');
+    mkdirSync(runnerTemp);
+    const { context, used } = setup({ RUNNER_TEMP: runnerTemp });
+    await deploy(context);
+    const authDir = dirname(/** @type {string} */ (used.auth));
+    expect(dirname(authDir)).toBe(runnerTemp);
+    expect(basename(authDir)).toMatch(/^gas-dev-ci-auth-/);
+    expect(readdirSync(runnerTemp)).toEqual([]);
+  });
+
+  it('fails with a DeployError when RUNNER_TEMP does not exist', async () => {
+    const { context } = setup({ RUNNER_TEMP: join(root, 'missing') });
+    const error = await deploy(context).catch((e) => e);
+    expect(error).toBeInstanceOf(DeployError);
+    expect(error.message).toMatch(/cannot create credentials dir in/);
   });
 
   it('leaves an existing ~/.clasprc.json untouched', async () => {

@@ -51,7 +51,16 @@ export async function deploy({
   }
   const redact = createRedactor(secrets);
 
-  const authDir = mkdtempSync(join(tmpdir(), 'gas-dev-ci-auth-'));
+  const authParent = inputs.runnerTemp ?? tmpdir();
+  /** @type {string} */
+  let authDir;
+  try {
+    authDir = mkdtempSync(join(authParent, 'gas-dev-ci-auth-'));
+  } catch (error) {
+    throw new DeployError(
+      `cannot create credentials dir in ${authParent}: ${/** @type {Error} */ (error).message}`,
+    );
+  }
   try {
     const auth = writeCredentials(authDir, inputs.clasprc);
     const { rootDir, manifestPath } = renderClaspConfig(cwd, inputs.scriptId);

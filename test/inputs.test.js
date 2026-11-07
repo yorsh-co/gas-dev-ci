@@ -54,6 +54,11 @@ describe('readInputs', () => {
     expect(inputs.outputPath).toBeUndefined();
   });
 
+  it('reads RUNNER_TEMP and treats an empty value as unset', () => {
+    expect(readInputs({ ...base, RUNNER_TEMP: '/r' }).runnerTemp).toBe('/r');
+    expect(readInputs({ ...base, RUNNER_TEMP: '' }).runnerTemp).toBeUndefined();
+  });
+
   it.each(['GAS_SCRIPT_ID', 'GAS_DEPLOYMENT_ID'])(
     'rejects a %s with invalid characters without echoing it',
     (name) => {
