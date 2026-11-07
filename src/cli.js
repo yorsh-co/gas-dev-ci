@@ -56,8 +56,8 @@ export async function main(argv, context) {
       await setup(
         context.cwd,
         createIo({
-          stdout: /** @type {NodeJS.WriteStream} */ (context.stdout),
-          stderr: /** @type {NodeJS.WriteStream} */ (context.stderr),
+          stdout: context.stdout,
+          stderr: context.stderr,
         }),
         context.createClasp ? { createClasp: context.createClasp } : undefined,
       );

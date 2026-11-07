@@ -33,7 +33,7 @@
 Add the CLI as a dev dependency. The workflow runs it with `npx --no-install`, so a missing dependency fails instead of fetching an unrelated package:
 
 ```sh
-npm install -D github:yorsh-co/gas-dev-ci#semver:^0.1.0
+npm install -D github:yorsh-co/gas-dev-ci#semver:^0.2.0
 ```
 
 Add a script to `package.json` for the setup wizard:
@@ -46,7 +46,7 @@ Add a script to `package.json` for the setup wizard:
 }
 ```
 
-The workflow is referenced by the moving minor tag (`@v0.1`), and the CLI by a semver range (`#semver:^0.1.0`). Both resolve to the latest 0.1.x release, but they are fetched separately: the workflow definition by GitHub when the job starts, the CLI by `npm ci` from your lockfile.
+The workflow is referenced by the moving minor tag (`@v0.2`), and the CLI by a semver range (`#semver:^0.2.0`). Both resolve to the latest 0.2.x release, but they are fetched separately: the workflow definition by GitHub when the job starts, the CLI by `npm ci` from your lockfile.
 
 ## Setup
 
@@ -285,7 +285,7 @@ on:
     branches: [develop, main]
 jobs:
   deploy:
-    uses: yorsh-co/gas-dev-ci/.github/workflows/gas-deploy.yml@v0.1
+    uses: yorsh-co/gas-dev-ci/.github/workflows/gas-deploy.yml@v0.2
     with:
       environment: ${{ github.ref_name == 'main' && 'live' || 'dev' }}
     secrets: inherit

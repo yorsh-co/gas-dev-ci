@@ -151,4 +151,35 @@ describe('main setup', () => {
       fake.cleanup();
     }
   });
+
+  it('returns 1 instead of throwing when stdout and stderr are plain writers', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'gas-dev-ci-cli-'));
+    sandboxes.push(cwd);
+    execFileSync('git', ['init', '-q'], { cwd });
+    writeFileSync(join(cwd, '.gitignore'), 'node_modules\n.env\n');
+    writeFileSync(
+      join(cwd, 'package.json'),
+      JSON.stringify({ name: 'app', gasDevCi: { title: 'App' } }),
+    );
+    writeFileSync(join(cwd, '.clasp.example.json'), '{"scriptId":""}');
+    writeFileSync(join(cwd, 'appsscript.example.json'), '{}');
+    const fake = createFakeLog();
+    try {
+      const { context, err } = setup();
+      const code = await main(['setup'], {
+        ...context,
+        cwd,
+        createClasp: (options) =>
+          createClasp({
+            ...options,
+            bin: fakeClaspBin,
+            env: { ...options.env, FAKE_CLASP_LOG: fake.logPath },
+          }),
+      });
+      expect(code).toBe(1);
+      expect(err.join('')).toMatch(/^gas-dev-ci: /);
+    } finally {
+      fake.cleanup();
+    }
+  });
 });

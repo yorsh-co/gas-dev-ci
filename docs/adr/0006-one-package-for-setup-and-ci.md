@@ -16,7 +16,7 @@ gas-dev-deploy (the setup wizard) and gas-dev-ci (CI deployment) were separate p
 
 Fold the wizard into gas-dev-ci as `gas-dev-ci setup`, beside `gas-dev-ci deploy`.
 
-- gas-dev-ci is kept as the repository and package name. The reusable workflow path and the `v0.1` tag are unchanged, so callers' `uses:` lines do not change.
+- gas-dev-ci is kept as the repository and package name. The reusable workflow path is unchanged; callers move from `@v0.1` to `@v0.2` with the 0.2.0 release.
 - The wizard runs the bundled `@google/clasp` through `resolveClaspBin()` (`process.execPath` plus the bin, no `PATH` lookup and no shell), so setup and CI use the same clasp version. The "clasp on `PATH`" requirement is gone.
 - The canonical clasp command names are used: `list-deployments [scriptId]`, `create-script`, `show-authorized-user` and `open-script`.
 - One error type, `DeployError`, replaces `CiError`, with `CancelledError` and `isDeployError` (matches by name). `DeployError` is the public API that custom steps throw, so it keeps its name.
@@ -32,4 +32,4 @@ Fold the wizard into gas-dev-ci as `gas-dev-ci setup`, beside `gas-dev-ci deploy
 - A project needs one dev dependency for its whole Apps Script deployment lifecycle.
 - Breaking change for gas-dev-deploy users: swap the dependency, change the `deploy:setup` script, rename the `gasDevDeploy` key to `gasDevCi` and import `DeployError` from `gas-dev-ci`. The README has a migration section.
 - CI installs `prompts` as a runtime dependency.
-- gas-dev-deploy is deprecated and archived.
+- gas-dev-deploy is deprecated and will be archived.
