@@ -3,19 +3,19 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
-  statSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { dirname, join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { main } from '../src/cli.js';
 import { createClasp } from '../src/clasp.js';
 import { DeployError } from '../src/errors.js';
 import { deploy } from '../src/deploy.js';
-import { fakeClaspBin } from './helpers/fake-clasp.js';
+import { fakeClaspBin, readCalls } from './helpers/fake-clasp.js';
 
 const REFRESH = 'refresh-token-SECRET-1234';
 const ACCESS = 'access-token-SECRET-5678';
@@ -28,15 +28,11 @@ const DEPLOYMENT = 'AKfycbxDEPLOYMENT';
 let root;
 /** @type {string} */
 let cwd;
-/** @type {string} */
-let home;
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'gas-dev-ci-deploy-'));
   cwd = join(root, 'project');
-  home = join(root, 'home');
   mkdirSync(cwd);
-  mkdirSync(home);
   writeFileSync(join(cwd, '.clasp.example.json'), '{"rootDir":"dist"}');
   mkdirSync(join(cwd, 'dist'));
   writeFileSync(
@@ -94,7 +90,18 @@ function fakeClasp(options = {}) {
       return { oauthScopes: options.deployedScopes ?? ['b', 'a'] };
     },
   };
-  return { calls, args, createClasp: () => clasp };
+  /** @type {{ auth?: string | undefined, content?: string }} */
+  const used = {};
+  return {
+    calls,
+    args,
+    used,
+    createClasp: (/** @type {{ auth?: string | undefined }} */ options) => {
+      used.auth = options.auth;
+      if (options.auth) used.content = readFileSync(options.auth, 'utf8');
+      return clasp;
+    },
+  };
 }
 
 /**
@@ -118,7 +125,6 @@ function setup(extra = {}, options) {
       ...extra,
     },
     cwd,
-    home,
     stdout,
     createClasp: fake.createClasp,
   };
@@ -129,18 +135,75 @@ function setup(extra = {}, options) {
     stdout,
     calls: fake.calls,
     args: fake.args,
+    used: fake.used,
     output: () => read(out),
     summary: () => read(summary),
   };
 }
 
 describe('deploy', () => {
-  it('writes the credentials with mode 0600', async () => {
-    const { context } = setup();
+  it('passes clasp a private credentials file and removes it afterwards', async () => {
+    const { context, used } = setup();
     await deploy(context);
-    const path = join(home, '.clasprc.json');
-    expect(statSync(path).mode & 0o777).toBe(0o600);
-    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual(JSON.parse(CLASPRC));
+    expect(used.auth).toMatch(/gas-dev-ci-auth-[^/]+\/\.clasprc\.json$/);
+    expect(JSON.parse(used.content ?? '')).toEqual(JSON.parse(CLASPRC));
+    expect(existsSync(/** @type {string} */ (used.auth))).toBe(false);
+    expect(existsSync(dirname(/** @type {string} */ (used.auth)))).toBe(false);
+  });
+
+  it('removes the credentials file when a step fails', async () => {
+    const { context, used } = setup({
+      GAS_DEPLOYMENT_ID: DEPLOYMENT,
+      GITHUB_SHA: 'abc123',
+    });
+    context.createClasp = (/** @type {any} */ options) => {
+      used.auth = options.auth;
+      return {
+        ...fakeClasp().createClasp(options),
+        push: () => {
+          throw new DeployError('push failed');
+        },
+        listDeployments: () => [{ deploymentId: DEPLOYMENT, versionNumber: 3 }],
+        readVersionManifest: () => ({ oauthScopes: ['a', 'b'] }),
+      };
+    };
+    await expect(deploy(context)).rejects.toThrow('push failed');
+    expect(existsSync(/** @type {string} */ (used.auth))).toBe(false);
+    expect(existsSync(dirname(/** @type {string} */ (used.auth)))).toBe(false);
+  });
+
+  it('leaves an existing ~/.clasprc.json untouched', async () => {
+    const home = join(root, 'home');
+    mkdirSync(home);
+    const existing = join(home, '.clasprc.json');
+    writeFileSync(existing, 'mine');
+    vi.stubEnv('HOME', home);
+    vi.stubEnv('USERPROFILE', home);
+    try {
+      const { context } = setup();
+      await deploy(context);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    expect(readFileSync(existing, 'utf8')).toBe('mine');
+    expect(readdirSync(home)).toEqual(['.clasprc.json']);
+  });
+
+  it('hands the real clasp only the temporary file, without CLASPRC_JSON', async () => {
+    const log = join(root, 'clasp.log');
+    const { context } = setup({ FAKE_CLASP_LOG: log });
+    await deploy({
+      ...context,
+      createClasp: (/** @type {any} */ options) =>
+        createClasp({ ...options, bin: fakeClaspBin }),
+    });
+    const calls = readCalls(log);
+    expect(calls.length).toBeGreaterThan(0);
+    for (const call of calls) {
+      expect(call.args.slice(0, 2)).toEqual(['-A', call.authFile]);
+      expect(existsSync(/** @type {string} */ (call.authFile))).toBe(false);
+      expect(call.envKeys).not.toContain('CLASPRC_JSON');
+    }
   });
 
   it('renders .clasp.json', async () => {

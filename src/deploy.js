@@ -1,5 +1,7 @@
 // @ts-check
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createClasp as defaultCreateClasp } from './clasp.js';
 import { renderClaspConfig } from './clasp-config.js';
 import { writeCredentials } from './credentials.js';
@@ -37,7 +39,6 @@ function scopeLines(title, scopes) {
 export async function deploy({
   env,
   cwd,
-  home,
   stdout,
   createClasp = defaultCreateClasp,
 }) {
@@ -50,84 +51,95 @@ export async function deploy({
   }
   const redact = createRedactor(secrets);
 
-  writeCredentials(home, inputs.clasprc);
-  const { rootDir, manifestPath } = renderClaspConfig(cwd, inputs.scriptId);
-
-  /** @type {any} */
-  let localManifest;
+  const authDir = mkdtempSync(join(tmpdir(), 'gas-dev-ci-auth-'));
   try {
-    localManifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-  } catch (error) {
-    if (/** @type {NodeJS.ErrnoException} */ (error).code === 'ENOENT') {
-      throw new DeployError(
-        `${rootDir}/appsscript.json not found; run the build first.`,
-      );
+    const auth = writeCredentials(authDir, inputs.clasprc);
+    const { rootDir, manifestPath } = renderClaspConfig(cwd, inputs.scriptId);
+
+    /** @type {any} */
+    let localManifest;
+    try {
+      localManifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    } catch (error) {
+      if (/** @type {NodeJS.ErrnoException} */ (error).code === 'ENOENT') {
+        throw new DeployError(
+          `${rootDir}/appsscript.json not found; run the build first.`,
+        );
+      }
+      throw new DeployError(`${rootDir}/appsscript.json is not valid JSON.`);
     }
-    throw new DeployError(`${rootDir}/appsscript.json is not valid JSON.`);
+
+    const clasp = createClasp({ cwd, env, redact, auth });
+    const { deploymentId, sha } = inputs;
+
+    if (deploymentId !== undefined) {
+      if (sha === undefined) {
+        throw new DeployError(
+          'GITHUB_SHA is not set; it is the description of the redeployed version.',
+        );
+      }
+      const deployment = clasp
+        .listDeployments()
+        .find(
+          (item) =>
+            typeof item === 'object' &&
+            item !== null &&
+            item.deploymentId === deploymentId,
+        );
+      if (deployment === undefined) {
+        throw new DeployError(
+          'GAS_DEPLOYMENT_ID does not match any deployment of the script.',
+        );
+      }
+      const { versionNumber } = deployment;
+      if (
+        typeof versionNumber !== 'number' ||
+        !Number.isInteger(versionNumber) ||
+        versionNumber < 1
+      ) {
+        throw new DeployError(
+          'GAS_DEPLOYMENT_ID points to the HEAD deployment; use a versioned web app deployment.',
+        );
+      }
+      const deployed = clasp.readVersionManifest(
+        inputs.scriptId,
+        versionNumber,
+      );
+      const { added, removed } = diffScopes(localManifest, deployed);
+      if (added.length > 0 || removed.length > 0) {
+        throw new DeployError(
+          [
+            `The OAuth scopes changed since version ${versionNumber}; nothing was pushed.`,
+            ...scopeLines('Added', added),
+            ...scopeLines('Removed', removed),
+            'Authorize the new scopes manually: see the README, #scope-changes.',
+          ].join('\n'),
+        );
+      }
+    }
+
+    clasp.push();
+
+    if (deploymentId === undefined || sha === undefined) {
+      stdout.write('Pushed (push only).\n');
+      writeOutput(inputs.outputPath, 'url', '');
+      writeSummary(
+        inputs.summaryPath,
+        '### gas-dev-ci\n\nPushed: push only.\n',
+      );
+      return;
+    }
+
+    const version = clasp.createVersion(sha);
+    clasp.updateDeployment(deploymentId, version, sha);
+    const url = `https://script.google.com/macros/s/${deploymentId}/exec`;
+    stdout.write(`Deployed version ${version}: ${url}\n`);
+    writeOutput(inputs.outputPath, 'url', url);
+    writeSummary(
+      inputs.summaryPath,
+      `### gas-dev-ci\n\nDeployed version ${version}: ${url}\n`,
+    );
+  } finally {
+    rmSync(authDir, { recursive: true, force: true });
   }
-
-  const clasp = createClasp({ cwd, env, redact });
-  const { deploymentId, sha } = inputs;
-
-  if (deploymentId !== undefined) {
-    if (sha === undefined) {
-      throw new DeployError(
-        'GITHUB_SHA is not set; it is the description of the redeployed version.',
-      );
-    }
-    const deployment = clasp
-      .listDeployments()
-      .find(
-        (item) =>
-          typeof item === 'object' &&
-          item !== null &&
-          item.deploymentId === deploymentId,
-      );
-    if (deployment === undefined) {
-      throw new DeployError(
-        'GAS_DEPLOYMENT_ID does not match any deployment of the script.',
-      );
-    }
-    const { versionNumber } = deployment;
-    if (
-      typeof versionNumber !== 'number' ||
-      !Number.isInteger(versionNumber) ||
-      versionNumber < 1
-    ) {
-      throw new DeployError(
-        'GAS_DEPLOYMENT_ID points to the HEAD deployment; use a versioned web app deployment.',
-      );
-    }
-    const deployed = clasp.readVersionManifest(inputs.scriptId, versionNumber);
-    const { added, removed } = diffScopes(localManifest, deployed);
-    if (added.length > 0 || removed.length > 0) {
-      throw new DeployError(
-        [
-          `The OAuth scopes changed since version ${versionNumber}; nothing was pushed.`,
-          ...scopeLines('Added', added),
-          ...scopeLines('Removed', removed),
-          'Authorize the new scopes manually: see the README, #scope-changes.',
-        ].join('\n'),
-      );
-    }
-  }
-
-  clasp.push();
-
-  if (deploymentId === undefined || sha === undefined) {
-    stdout.write('Pushed (push only).\n');
-    writeOutput(inputs.outputPath, 'url', '');
-    writeSummary(inputs.summaryPath, '### gas-dev-ci\n\nPushed: push only.\n');
-    return;
-  }
-
-  const version = clasp.createVersion(sha);
-  clasp.updateDeployment(deploymentId, version, sha);
-  const url = `https://script.google.com/macros/s/${deploymentId}/exec`;
-  stdout.write(`Deployed version ${version}: ${url}\n`);
-  writeOutput(inputs.outputPath, 'url', url);
-  writeSummary(
-    inputs.summaryPath,
-    `### gas-dev-ci\n\nDeployed version ${version}: ${url}\n`,
-  );
 }

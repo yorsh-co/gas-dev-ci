@@ -351,14 +351,14 @@ gas-dev-ci deploy
 
 `setup` takes no arguments; see [Setup wizard](#setup-wizard). The rest of this section covers `deploy`.
 
-| Variable              | Required             | Description                                                                |
-| --------------------- | -------------------- | -------------------------------------------------------------------------- |
-| `CLASPRC_JSON`        | yes                  | Contents of `~/.clasprc.json`. Written to the home directory with mode 600 |
-| `GAS_SCRIPT_ID`       | yes                  | Script ID, written to `.clasp.json` (overwritten if present)               |
-| `GAS_DEPLOYMENT_ID`   | no                   | Web app deployment to redeploy                                             |
-| `GITHUB_SHA`          | with a deployment ID | Description of the new version and deployment                              |
-| `GITHUB_OUTPUT`       | no                   | File that receives the `url` output                                        |
-| `GITHUB_STEP_SUMMARY` | no                   | File that receives the job summary                                         |
+| Variable              | Required             | Description                                                                                       |
+| --------------------- | -------------------- | ------------------------------------------------------------------------------------------------- |
+| `CLASPRC_JSON`        | yes                  | Contents of `~/.clasprc.json`. Written to a private temporary file (mode 600), removed afterwards |
+| `GAS_SCRIPT_ID`       | yes                  | Script ID, written to `.clasp.json` (overwritten if present)                                      |
+| `GAS_DEPLOYMENT_ID`   | no                   | Web app deployment to redeploy                                                                    |
+| `GITHUB_SHA`          | with a deployment ID | Description of the new version and deployment                                                     |
+| `GITHUB_OUTPUT`       | no                   | File that receives the `url` output                                                               |
+| `GITHUB_STEP_SUMMARY` | no                   | File that receives the job summary                                                                |
 
 `.clasp.json` is rendered from `.clasp.example.json` plus the script ID (`rootDir` must be absent or a relative path without `..`). Under `GITHUB_ACTIONS=true` every string of `CLASPRC_JSON` with 8 or more characters is masked in the logs.
 

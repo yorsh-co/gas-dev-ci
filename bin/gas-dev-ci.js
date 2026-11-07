@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 // @ts-check
-import { homedir } from 'node:os';
 import { main } from '../src/cli.js';
 
 process.exitCode = await main(process.argv.slice(2), {
@@ -8,5 +7,4 @@ process.exitCode = await main(process.argv.slice(2), {
   stderr: process.stderr,
   env: process.env,
   cwd: process.cwd(),
-  home: homedir(),
 });

@@ -28,7 +28,7 @@ export const fakeClaspBin = SCRIPT;
  * Reads the calls logged by the fake.
  *
  * @param {string} logPath
- * @returns {{ args: string[], cwd: string, projectDir?: string, files: Record<string, string>, claspEnv: Record<string, string | undefined>, envKeys: string[] }[]}
+ * @returns {{ args: string[], cwd: string, projectDir?: string, authFile?: string, files: Record<string, string>, claspEnv: Record<string, string | undefined>, envKeys: string[] }[]}
  */
 export function readCalls(logPath) {
   try {
@@ -45,6 +45,8 @@ export function readCalls(logPath) {
 function main() {
   const args = process.argv.slice(2);
   const env = process.env;
+  const authIndex = args.indexOf('-A');
+  const authFile = authIndex === -1 ? undefined : args[authIndex + 1];
   const projectIndex = args.indexOf('-P');
   const projectDir = projectIndex === -1 ? undefined : args[projectIndex + 1];
   /** @type {Record<string, string>} */
@@ -61,6 +63,7 @@ function main() {
       args,
       cwd: process.cwd(),
       projectDir,
+      authFile,
       files,
       claspEnv: {
         clasp_config_auth: env.clasp_config_auth,
@@ -73,7 +76,12 @@ function main() {
   );
   const command =
     args.filter(
-      (arg) => arg !== '--json' && arg !== '-P' && arg !== projectDir,
+      (arg) =>
+        arg !== '--json' &&
+        arg !== '-P' &&
+        arg !== projectDir &&
+        arg !== '-A' &&
+        arg !== authFile,
     )[0] ?? '';
 
   if (env.FAKE_CLASP_FAIL === command) {

@@ -73,9 +73,10 @@ export function resolveClaspBin() {
  * @param {NodeJS.ProcessEnv} options.env
  * @param {(text: string) => string} [options.redact] Applied to clasp output in error messages; identity by default.
  * @param {string} [options.bin] clasp entry script; defaults to the installed `@google/clasp`.
+ * @param {string} [options.auth] Credentials file passed to every command as `-A`; clasp defaults to `~/.clasprc.json`.
  * @returns {Clasp}
  */
-export function createClasp({ cwd, env, redact = (text) => text, bin }) {
+export function createClasp({ cwd, env, redact = (text) => text, bin, auth }) {
   const claspBin = bin ?? resolveClaspBin();
   // clasp reads clasp_config_* from the environment and they could redirect it to other credentials,
   // project or ignore file; CLASPRC_JSON holds the raw credentials and clasp must not see them.
@@ -92,9 +93,11 @@ export function createClasp({ cwd, env, redact = (text) => text, bin }) {
    * @returns {string}
    */
   function run(args, options = {}) {
-    const rest = args[0] === '-P' ? args.slice(2) : args;
+    const fullArgs = auth === undefined ? args : ['-A', auth, ...args];
+    let rest = fullArgs;
+    while (rest[0] === '-A' || rest[0] === '-P') rest = rest.slice(2);
     const name = rest.find((arg) => !arg.startsWith('-')) ?? rest[0];
-    const result = spawnSync(process.execPath, [claspBin, ...args], {
+    const result = spawnSync(process.execPath, [claspBin, ...fullArgs], {
       cwd: options.cwd ?? cwd,
       env: claspEnv,
       encoding: 'utf8',

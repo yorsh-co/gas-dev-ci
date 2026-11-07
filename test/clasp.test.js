@@ -229,6 +229,23 @@ describe('createClasp', () => {
     expect(message).not.toContain(SECRET);
   });
 
+  it('passes -A and names the command, not the auth path, in errors', () => {
+    extraEnv.FAKE_CLASP_FAIL = 'push';
+    const clasp = createClasp({
+      cwd: dir,
+      env: { ...process.env, FAKE_CLASP_LOG: logPath, ...extraEnv },
+      bin: fakeClaspBin,
+      auth: '/secret/auth.json',
+    });
+    expect(() => clasp.push()).toThrow(/^clasp push failed/);
+    expect(readCalls(logPath)[0]?.args).toEqual([
+      '-A',
+      '/secret/auth.json',
+      'push',
+      '--force',
+    ]);
+  });
+
   it('reports the signal when clasp is killed', () => {
     extraEnv.FAKE_CLASP_KILL = 'push';
     expect(() => make().push()).toThrow(/clasp push failed \(exit SIGTERM\)/);
