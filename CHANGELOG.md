@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+---
+
+## [1.0.0] - 2026-11-07
+
 ### Added
 
 - `test:coverage` script with enforced coverage floors.

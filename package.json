@@ -1,6 +1,6 @@
 {
   "name": "gas-dev-ci",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Setup and CI deployment for Google Apps Script web apps: a guided setup wizard, and a reusable GitHub Actions workflow and CLI that push with clasp and redeploy.",
   "repository": {
