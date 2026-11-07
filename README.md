@@ -342,6 +342,10 @@ If the OAuth scopes in the built `appsscript.json` differ from those of the depl
 
 The check compares only the explicit `oauthScopes` in `appsscript.json`. A project that relies on automatic scope detection (no `oauthScopes` key) always passes the check, so web-app projects should declare `oauthScopes` explicitly.
 
+## Versioning
+
+gas-dev-ci follows semver from 1.0. The covered surface (commands, environment variables, workflow inputs and outputs, the `gasDevCi` key and the `DeployError` export) and the planned fold into gas-dev-config 3.0 are recorded in [ADR 0007](docs/adr/0007-public-api-and-fold-path.md).
+
 ## CLI reference
 
 ```sh
