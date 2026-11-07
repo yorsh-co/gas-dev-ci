@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Override `gaxios` to `^7.3.1` per gas-dev-config ADR 0005, removing the vulnerable `rimraf` 5 / `glob` 10 chain.
+
 ---
 
 ## [0.1.0] - 2026-11-06
