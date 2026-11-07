@@ -20,6 +20,16 @@ function help(args) {
   );
 }
 
+/**
+ * Matches a whole flag, not a substring of a longer option.
+ * @param {string} flag
+ * @returns {RegExp}
+ */
+function flagPattern(flag) {
+  const escaped = flag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|[\\s,])${escaped}($|[\\s,=])`, 'm');
+}
+
 /** @type {Array<[string, string[]]>} */
 const commands = [
   ['push', ['--force']],
@@ -37,7 +47,7 @@ describe('bundled clasp contract', () => {
   it('lists the global flags', () => {
     const out = help([]);
     for (const flag of ['--json', '-P', '-A']) {
-      expect(out).toContain(flag);
+      expect(out).toMatch(flagPattern(flag));
     }
   });
 
@@ -46,7 +56,7 @@ describe('bundled clasp contract', () => {
     // clasp prints global help with exit 0 for unknown commands, so match the command's own usage line.
     expect(out).toMatch(new RegExp(`^Usage: clasp ${command}[| ]`, 'm'));
     for (const flag of flags) {
-      expect(out).toContain(flag);
+      expect(out).toMatch(flagPattern(flag));
     }
   });
 });
