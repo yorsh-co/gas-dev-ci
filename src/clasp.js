@@ -77,8 +77,11 @@ export function resolveClaspBin() {
  */
 export function createClasp({ cwd, env, redact = (text) => text, bin }) {
   const claspBin = bin ?? resolveClaspBin();
-  // clasp reads these from the environment and they could redirect it to other credentials or project.
+  // clasp reads clasp_config_* from the environment and they could redirect it to other credentials,
+  // project or ignore file; CLASPRC_JSON holds the raw credentials and clasp must not see them.
   const claspEnv = { ...env };
+  delete claspEnv.CLASPRC_JSON;
+  delete claspEnv.clasp_config_ignore;
   delete claspEnv.clasp_config_auth;
   delete claspEnv.clasp_config_project;
 

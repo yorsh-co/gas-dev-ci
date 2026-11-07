@@ -8,6 +8,12 @@ import { DeployError } from '../src/errors.js';
 import { fakeClaspBin, readCalls } from './helpers/fake-clasp.js';
 
 const SECRET = 'super-secret-token';
+const STRIPPED = [
+  'CLASPRC_JSON',
+  'clasp_config_auth',
+  'clasp_config_project',
+  'clasp_config_ignore',
+];
 const redact = (/** @type {string} */ text) => text.replaceAll(SECRET, '***');
 
 describe('createClasp', () => {
@@ -40,11 +46,16 @@ describe('createClasp', () => {
     expect(call?.cwd).toBe(dir);
   });
 
-  it('does not pass clasp config overrides from the environment', () => {
+  it('does not pass credentials or clasp config overrides from the environment', () => {
     extraEnv.clasp_config_auth = '/elsewhere/auth';
     extraEnv.clasp_config_project = '/elsewhere/project';
+    extraEnv.clasp_config_ignore = '/elsewhere/ignore';
+    extraEnv.CLASPRC_JSON = '{"tokens":{"default":{}}}';
+    extraEnv.GAS_DEV_CI_SENTINEL = 'x';
     make().push();
-    expect(readCalls(logPath)[0]?.claspEnv).toEqual({});
+    const keys = readCalls(logPath)[0]?.envKeys ?? [];
+    expect(keys).toContain('GAS_DEV_CI_SENTINEL');
+    for (const key of STRIPPED) expect(keys).not.toContain(key);
   });
 
   it('lists deployments', () => {
@@ -360,9 +371,17 @@ describe('createClasp setup commands', () => {
   it('strips the clasp config overrides', () => {
     extraEnv.clasp_config_auth = '/elsewhere/auth';
     extraEnv.clasp_config_project = '/elsewhere/project';
+    extraEnv.clasp_config_ignore = '/elsewhere/ignore';
+    extraEnv.CLASPRC_JSON = '{"tokens":{"default":{}}}';
+    extraEnv.GAS_DEV_CI_SENTINEL = 'x';
     make().whoAmI();
     make().login();
-    for (const call of readCalls(logPath)) expect(call.claspEnv).toEqual({});
+    const calls = readCalls(logPath);
+    expect(calls).toHaveLength(2);
+    for (const call of calls) {
+      expect(call.envKeys).toContain('GAS_DEV_CI_SENTINEL');
+      for (const key of STRIPPED) expect(call.envKeys).not.toContain(key);
+    }
   });
 
   it('lists deployments with and without a scriptId', () => {
