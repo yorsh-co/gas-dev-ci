@@ -8,6 +8,12 @@ import { DeployError } from '../src/errors.js';
 import { fakeClaspBin, readCalls } from './helpers/fake-clasp.js';
 
 const SECRET = 'super-secret-token';
+const STRIPPED = [
+  'CLASPRC_JSON',
+  'clasp_config_auth',
+  'clasp_config_project',
+  'clasp_config_ignore',
+];
 const redact = (/** @type {string} */ text) => text.replaceAll(SECRET, '***');
 
 describe('createClasp', () => {
@@ -40,11 +46,35 @@ describe('createClasp', () => {
     expect(call?.cwd).toBe(dir);
   });
 
-  it('does not pass clasp config overrides from the environment', () => {
+  it('does not pass credentials or clasp config overrides from the environment', () => {
     extraEnv.clasp_config_auth = '/elsewhere/auth';
     extraEnv.clasp_config_project = '/elsewhere/project';
+    extraEnv.clasp_config_ignore = '/elsewhere/ignore';
+    extraEnv.CLASPRC_JSON = '{"tokens":{"default":{}}}';
+    extraEnv.GAS_DEV_CI_SENTINEL = 'x';
     make().push();
-    expect(readCalls(logPath)[0]?.claspEnv).toEqual({});
+    const keys = readCalls(logPath)[0]?.envKeys ?? [];
+    expect(keys).toContain('GAS_DEV_CI_SENTINEL');
+    for (const key of STRIPPED) expect(keys).not.toContain(key);
+  });
+
+  it('strips the clasp config overrides regardless of key case', () => {
+    extraEnv.CLASP_CONFIG_AUTH = '/elsewhere/auth';
+    extraEnv.Clasp_Config_Project = '/elsewhere/project';
+    extraEnv.CLASP_CONFIG_IGNORE = '/elsewhere/ignore';
+    extraEnv.clasprc_json = '{"tokens":{"default":{}}}';
+    extraEnv.GAS_DEV_CI_SENTINEL = 'x';
+    make().push();
+    const keys = readCalls(logPath)[0]?.envKeys ?? [];
+    expect(keys).toContain('GAS_DEV_CI_SENTINEL');
+    for (const key of [
+      'CLASP_CONFIG_AUTH',
+      'Clasp_Config_Project',
+      'CLASP_CONFIG_IGNORE',
+      'clasprc_json',
+    ]) {
+      expect(keys).not.toContain(key);
+    }
   });
 
   it('lists deployments', () => {
@@ -98,7 +128,7 @@ describe('createClasp', () => {
     make().updateDeployment('dep-1', 7, 'abc123');
     expect(readCalls(logPath)[0]?.args).toEqual([
       '--json',
-      'deploy',
+      'create-deployment',
       '-i',
       'dep-1',
       '-V',
@@ -201,21 +231,42 @@ describe('createClasp', () => {
     expect(message).not.toContain(SECRET);
   });
 
-  it.each(['create-version', 'deploy'])('redacts a failing %s', (command) => {
-    extraEnv.FAKE_CLASP_FAIL = command;
-    extraEnv.FAKE_CLASP_ECHO = SECRET;
-    const clasp = make();
-    let error;
-    try {
-      if (command === 'deploy') clasp.updateDeployment('d', 1, 'x');
-      else clasp.createVersion('x');
-    } catch (e) {
-      error = e;
-    }
-    const message = String(/** @type {Error} */ (error).message);
-    expect(error).toBeInstanceOf(DeployError);
-    expect(message).toContain(`clasp ${command} failed (exit 1)`);
-    expect(message).not.toContain(SECRET);
+  it.each(['create-version', 'create-deployment'])(
+    'redacts a failing %s',
+    (command) => {
+      extraEnv.FAKE_CLASP_FAIL = command;
+      extraEnv.FAKE_CLASP_ECHO = SECRET;
+      const clasp = make();
+      let error;
+      try {
+        if (command === 'create-deployment')
+          clasp.updateDeployment('d', 1, 'x');
+        else clasp.createVersion('x');
+      } catch (e) {
+        error = e;
+      }
+      const message = String(/** @type {Error} */ (error).message);
+      expect(error).toBeInstanceOf(DeployError);
+      expect(message).toContain(`clasp ${command} failed (exit 1)`);
+      expect(message).not.toContain(SECRET);
+    },
+  );
+
+  it('passes -A and names the command, not the auth path, in errors', () => {
+    extraEnv.FAKE_CLASP_FAIL = 'push';
+    const clasp = createClasp({
+      cwd: dir,
+      env: { ...process.env, FAKE_CLASP_LOG: logPath, ...extraEnv },
+      bin: fakeClaspBin,
+      auth: '/secret/auth.json',
+    });
+    expect(() => clasp.push()).toThrow(/^clasp push failed/);
+    expect(readCalls(logPath)[0]?.args).toEqual([
+      '-A',
+      '/secret/auth.json',
+      'push',
+      '--force',
+    ]);
   });
 
   it('reports the signal when clasp is killed', () => {
@@ -360,9 +411,17 @@ describe('createClasp setup commands', () => {
   it('strips the clasp config overrides', () => {
     extraEnv.clasp_config_auth = '/elsewhere/auth';
     extraEnv.clasp_config_project = '/elsewhere/project';
+    extraEnv.clasp_config_ignore = '/elsewhere/ignore';
+    extraEnv.CLASPRC_JSON = '{"tokens":{"default":{}}}';
+    extraEnv.GAS_DEV_CI_SENTINEL = 'x';
     make().whoAmI();
     make().login();
-    for (const call of readCalls(logPath)) expect(call.claspEnv).toEqual({});
+    const calls = readCalls(logPath);
+    expect(calls).toHaveLength(2);
+    for (const call of calls) {
+      expect(call.envKeys).toContain('GAS_DEV_CI_SENTINEL');
+      for (const key of STRIPPED) expect(call.envKeys).not.toContain(key);
+    }
   });
 
   it('lists deployments with and without a scriptId', () => {

@@ -40,7 +40,6 @@ function setup() {
     stderr: { write: (/** @type {string} */ text) => err.push(text) },
     env: {},
     cwd: '/tmp/project',
-    home: '/tmp/home',
   };
   return { context, out, err };
 }

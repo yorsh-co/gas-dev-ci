@@ -22,7 +22,6 @@ Options:
  * @property {{ write(text: string): unknown }} stderr
  * @property {NodeJS.ProcessEnv} env
  * @property {string} cwd Project root.
- * @property {string} home Home directory, where clasp credentials are written.
  * @property {typeof import('./clasp.js').createClasp} [createClasp] Clasp factory; tests inject a fake binary.
  */
 

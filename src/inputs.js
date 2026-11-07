@@ -9,6 +9,7 @@ import { DeployError } from './errors.js';
  * @property {string | undefined} [sha] Redeploy description (`GITHUB_SHA`).
  * @property {boolean} githubActions
  * @property {string | undefined} [outputPath] `GITHUB_OUTPUT` file.
+ * @property {string | undefined} [runnerTemp] `RUNNER_TEMP` directory; emptied by the runner after each job.
  * @property {string | undefined} [summaryPath] `GITHUB_STEP_SUMMARY` file.
  */
 
@@ -74,6 +75,7 @@ export function readInputs(env) {
     sha: nonEmpty(env.GITHUB_SHA),
     githubActions: env.GITHUB_ACTIONS === 'true',
     outputPath: nonEmpty(env.GITHUB_OUTPUT),
+    runnerTemp: nonEmpty(env.RUNNER_TEMP),
     summaryPath: nonEmpty(env.GITHUB_STEP_SUMMARY),
   };
 }

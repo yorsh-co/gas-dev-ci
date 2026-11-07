@@ -33,7 +33,7 @@
 Add the CLI as a dev dependency. The workflow runs it with `npx --no-install`, so a missing dependency fails instead of fetching an unrelated package:
 
 ```sh
-npm install -D github:yorsh-co/gas-dev-ci#semver:^0.2.0
+npm install -D github:yorsh-co/gas-dev-ci#semver:^1.0.0
 ```
 
 Add a script to `package.json` for the setup wizard:
@@ -46,7 +46,7 @@ Add a script to `package.json` for the setup wizard:
 }
 ```
 
-The workflow is referenced by the moving minor tag (`@v0.2`), and the CLI by a semver range (`#semver:^0.2.0`). Both resolve to the latest 0.2.x release, but they are fetched separately: the workflow definition by GitHub when the job starts, the CLI by `npm ci` from your lockfile.
+The workflow is referenced by the moving major tag (`@v1`), and the CLI by a semver range (`#semver:^1.0.0`). Both resolve to the latest 1.x release, but they are fetched separately: the workflow definition by GitHub when the job starts, the CLI by `npm ci` from your lockfile.
 
 ## Setup
 
@@ -269,11 +269,11 @@ Deploying from the Apps Script editor triggers the OAuth consent prompt for the 
 
 gas-dev-deploy is deprecated and folded into this package.
 
-1. Run `npm uninstall gas-dev-deploy`, then `npm install -D github:yorsh-co/gas-dev-ci#semver:^0.2.0`.
+1. Run `npm uninstall gas-dev-deploy`, then `npm install -D github:yorsh-co/gas-dev-ci#semver:^1.0.0`.
 2. Change the script to `"deploy:setup": "gas-dev-ci setup"`.
 3. Rename the `gasDevDeploy` key in `package.json` to `gasDevCi` (same contents).
 4. In custom steps, import `DeployError` from `gas-dev-ci` instead of `gas-dev-deploy`.
-5. Change `@v0.1` to `@v0.2` in the caller workflow.
+5. Change `@v0.1` to `@v1` in the caller workflow.
 
 The wizard now runs the bundled clasp, so a global clasp is no longer needed.
 
@@ -285,7 +285,7 @@ on:
     branches: [develop, main]
 jobs:
   deploy:
-    uses: yorsh-co/gas-dev-ci/.github/workflows/gas-deploy.yml@v0.2
+    uses: yorsh-co/gas-dev-ci/.github/workflows/gas-deploy.yml@v1
     with:
       environment: ${{ github.ref_name == 'main' && 'live' || 'dev' }}
     secrets: inherit
@@ -342,6 +342,18 @@ If the OAuth scopes in the built `appsscript.json` differ from those of the depl
 
 The check compares only the explicit `oauthScopes` in `appsscript.json`. A project that relies on automatic scope detection (no `oauthScopes` key) always passes the check, so web-app projects should declare `oauthScopes` explicitly.
 
+## Versioning
+
+gas-dev-ci follows semver. The covered surface (commands, environment variables, workflow inputs and outputs, the `gasDevCi` key and the `DeployError` export) and the planned fold into gas-dev-config 3.0 are recorded in [ADR 0007](docs/adr/0007-public-api-and-fold-path.md).
+
+Releases are tagged `vX.Y.Z` and the moving major tag `vX` is advanced to the latest one; see [ADR 0009](docs/adr/0009-moving-major-tag.md).
+
+### Upgrading from 0.2
+
+1. Change `@v0.2` to `@v1` in the caller workflow.
+2. Run `npm install -D github:yorsh-co/gas-dev-ci#semver:^1.0.0`.
+3. The `deploy` export is removed; run `gas-dev-ci deploy` instead.
+
 ## CLI reference
 
 ```sh
@@ -351,14 +363,14 @@ gas-dev-ci deploy
 
 `setup` takes no arguments; see [Setup wizard](#setup-wizard). The rest of this section covers `deploy`.
 
-| Variable              | Required             | Description                                                                |
-| --------------------- | -------------------- | -------------------------------------------------------------------------- |
-| `CLASPRC_JSON`        | yes                  | Contents of `~/.clasprc.json`. Written to the home directory with mode 600 |
-| `GAS_SCRIPT_ID`       | yes                  | Script ID, written to `.clasp.json` (overwritten if present)               |
-| `GAS_DEPLOYMENT_ID`   | no                   | Web app deployment to redeploy                                             |
-| `GITHUB_SHA`          | with a deployment ID | Description of the new version and deployment                              |
-| `GITHUB_OUTPUT`       | no                   | File that receives the `url` output                                        |
-| `GITHUB_STEP_SUMMARY` | no                   | File that receives the job summary                                         |
+| Variable              | Required             | Description                                                                                                                        |
+| --------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `CLASPRC_JSON`        | yes                  | Contents of `~/.clasprc.json`. Written to a private temporary file (mode 600), removed afterwards (in `RUNNER_TEMP` under Actions) |
+| `GAS_SCRIPT_ID`       | yes                  | Script ID, written to `.clasp.json` (overwritten if present)                                                                       |
+| `GAS_DEPLOYMENT_ID`   | no                   | Web app deployment to redeploy                                                                                                     |
+| `GITHUB_SHA`          | with a deployment ID | Description of the new version and deployment                                                                                      |
+| `GITHUB_OUTPUT`       | no                   | File that receives the `url` output                                                                                                |
+| `GITHUB_STEP_SUMMARY` | no                   | File that receives the job summary                                                                                                 |
 
 `.clasp.json` is rendered from `.clasp.example.json` plus the script ID (`rootDir` must be absent or a relative path without `..`). Under `GITHUB_ACTIONS=true` every string of `CLASPRC_JSON` with 8 or more characters is masked in the logs.
 

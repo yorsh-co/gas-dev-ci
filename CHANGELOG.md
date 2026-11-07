@@ -6,6 +6,38 @@
 
 ---
 
+## [1.0.0] - 2026-11-07
+
+### Added
+
+- `test:coverage` script with enforced coverage floors.
+- Contract test against the bundled clasp CLI.
+- Package surface test.
+- ADR 0007 documenting the semver-covered public API and the fold path into gas-dev-config 3.0.
+- ADR 0008 security model.
+- ADR 0009 documenting the moving major tag.
+
+### Changed
+
+- Callers move to `@v1` (reusable workflow) and `#semver:^1.0.0` (dependency).
+- README documents upgrading from 0.2.
+- `deploy()` and the CLI `main()` context no longer take `home`.
+- The reusable workflow passes the `check` and `build` inputs through env vars instead of interpolating them into `run:`.
+- `writeOutput` rejects line breaks in step output names and values.
+
+### Removed
+
+- **Breaking:** the `deploy` export from the package entry; use the `gas-dev-ci deploy` command.
+
+### Fixed
+
+- Redeploy uses clasp's canonical `create-deployment` command instead of the `deploy` alias (ADR 0006).
+- clasp's child environment no longer receives `CLASPRC_JSON` or any `clasp_config_*` override, matched case-insensitively.
+- Credentials are written to a private temporary file passed with `-A` and removed after the run (also on failure); `~/.clasprc.json` is no longer written or overwritten.
+- Under GitHub Actions the credentials file is created in `RUNNER_TEMP`, so the runner removes it even when the step is cancelled.
+
+---
+
 ## [0.2.0] - 2026-11-07
 
 ### Added
