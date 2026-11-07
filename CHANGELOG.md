@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+---
+
+## [0.1.1] - 2026-11-07
+
 ### Added
 
 - Step-by-step setup guide in the README.
