@@ -2,6 +2,9 @@
 
 ## Setup and CI deployment for Google Apps Script projects: a guided `gas-dev-ci setup` wizard, a reusable GitHub Actions workflow and a `gas-dev-ci deploy` CLI that push with clasp and redeploy web apps.
 
+> [!CAUTION]
+> Deprecated: folded into [gasdev](https://github.com/yorsh-co/gasdev) as `gasdev setup`, `gasdev deploy` and the reusable `gas-deploy` workflow. See [Migrating to 3.0](https://github.com/yorsh-co/gasdev#migrating-to-30). This repository is archived.
+
 > [!NOTE]
 > `gas-dev-ci` is development tooling. It is installed as a dev dependency and is never pushed to Apps Script.
 
