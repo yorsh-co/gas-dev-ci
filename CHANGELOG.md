@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Deprecated
+
+- `gas-dev-ci` is folded into [gasdev](https://github.com/yorsh-co/gasdev) as `gasdev setup`, `gasdev deploy` and the reusable `gas-deploy` workflow; the repository is archived and receives no further releases
+
 ---
 
 ## [1.0.0] - 2026-11-07
